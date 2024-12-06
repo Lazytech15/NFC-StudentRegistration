@@ -34,6 +34,7 @@ const StudentRegistration = () => {
   const [nfcSerial, setNfcSerial] = useState(null);
   const [studentId, setStudentId] = useState(null);
   const [selfie, setSelfie] = useState(null);
+  const [isNfcScanning, setIsNfcScanning] = useState(false);
   const [formData, setFormData] = useState({
     studentName: '',
     email: '',
@@ -45,16 +46,53 @@ const StudentRegistration = () => {
   const fileInputRef = useRef(null);
   const studentIdRef = useRef(null);
 
+  const checkNfcAuthorization = async (serialNumber) => {
+    try {
+      const docRef = doc(db, 'Toregistered', serialNumber);
+      const docSnap = await getDoc(docRef);
+      
+      return docSnap.exists();
+    } catch (error) {
+      console.error('NFC Authorization Check Error:', error);
+      return false;
+    }
+  };
+
+  const writeNfcTag = async (documentId) => {
+    if ('NDEFWriter' in window) {
+      try {
+        const writer = new NDEFWriter();
+        await writer.write({
+          records: [{ recordType: "text", data: documentId }]
+        });
+        alert('Document ID written to NFC tag successfully');
+      } catch (error) {
+        alert('NFC Write Error: ' + error);
+      }
+    } else {
+      alert('Web NFC writing not supported');
+    }
+  };
+
   const readNfcTag = async () => {
     if ('NDEFReader' in window) {
       try {
+        setIsNfcScanning(true);
         const ndef = new NDEFReader();
         await ndef.scan();
         
-        ndef.addEventListener("reading", ({ message, serialNumber }) => {
-          setNfcSerial(serialNumber);
+        ndef.addEventListener("reading", async ({ serialNumber }) => {
+          setIsNfcScanning(false);
+          const isAuthorized = await checkNfcAuthorization(serialNumber);
+          
+          if (isAuthorized) {
+            setNfcSerial(serialNumber);
+          } else {
+            alert('NFC tag is not authorized');
+          }
         });
       } catch (error) {
+        setIsNfcScanning(false);
         alert('NFC Error: ' + error);
       }
     } else {
@@ -100,6 +138,11 @@ const StudentRegistration = () => {
 
       const docRef = await addDoc(collection(db, 'RegisteredStudent'), registrationData);
       
+      // Prompt to write document ID to NFC tag
+      if (window.confirm('Approach NFC tag to write document ID')) {
+        await writeNfcTag(docRef.id);
+      }
+      
       alert(`Registration Complete! Document ID: ${docRef.id}`);
       
       // Reset form
@@ -124,8 +167,12 @@ const StudentRegistration = () => {
       <h1>Student Registration</h1>
       
       {!nfcSerial ? (
-        <button onClick={readNfcTag} className={styles.nfcButton}>
-          Scan NFC Tag
+        <button 
+          onClick={readNfcTag} 
+          className={styles.nfcButton}
+          disabled={isNfcScanning}
+        >
+          {isNfcScanning ? 'Scanning...' : 'Scan NFC Tag'}
         </button>
       ) : (
         <form onSubmit={handleSubmit} className={styles.form}>
