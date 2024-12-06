@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, 
   doc, 
+  getDoc, 
   addDoc, 
   collection, 
   serverTimestamp 
@@ -30,9 +31,10 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 const StudentRegistration = () => {
-  const [barcodeData, setBarcodeData] = useState(null);
+  const [nfcSerial, setNfcSerial] = useState(null);
+  const [studentId, setStudentId] = useState(null);
   const [selfie, setSelfie] = useState(null);
-  const [isScanning, setIsScanning] = useState(false);
+  const [isNfcScanning, setIsNfcScanning] = useState(false);
   const [formData, setFormData] = useState({
     studentName: '',
     email: '',
@@ -40,65 +42,67 @@ const StudentRegistration = () => {
     campus: ''
   });
 
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
+  const nfcRef = useRef(null);
   const fileInputRef = useRef(null);
+  const studentIdRef = useRef(null);
 
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
-
-  const startScanning = async () => {
-    if (!('BarcodeDetector' in window)) {
-      alert('Barcode detection not supported in this browser');
-      return;
-    }
-
+  const checkNfcAuthorization = async (serialNumber) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
+      const docRef = doc(db, 'Toregistered', serialNumber);
+      const docSnap = await getDoc(docRef);
       
-      streamRef.current = stream;
-      videoRef.current.srcObject = stream;
-      setIsScanning(true);
-
-      const barcodeDetector = new BarcodeDetector({
-        formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e']
-      });
-
-      const checkForBarcode = async () => {
-        if (!videoRef.current || !isScanning) return;
-
-        try {
-          const barcodes = await barcodeDetector.detect(videoRef.current);
-          if (barcodes.length > 0) {
-            setBarcodeData(barcodes[0].rawValue);
-            setIsScanning(false);
-            if (streamRef.current) {
-              streamRef.current.getTracks().forEach(track => track.stop());
-            }
-          } else {
-            requestAnimationFrame(checkForBarcode);
-          }
-        } catch (err) {
-          console.error('Barcode detection error:', err);
-        }
-      };
-
-      videoRef.current.onloadedmetadata = () => {
-        videoRef.current.play();
-        checkForBarcode();
-      };
-    } catch (err) {
-      console.error('Camera access error:', err);
-      alert('Failed to access camera');
-      setIsScanning(false);
+      return docSnap.exists();
+    } catch (error) {
+      console.error('NFC Authorization Check Error:', error);
+      return false;
     }
+  };
+
+  const writeNfcTag = async (documentId) => {
+    if ('NDEFWriter' in window) {
+      try {
+        const writer = new NDEFWriter();
+        await writer.write({
+          records: [{ recordType: "text", data: documentId }]
+        });
+        alert('Document ID written to NFC tag successfully');
+      } catch (error) {
+        alert('NFC Write Error: ' + error);
+      }
+    } else {
+      alert('Web NFC writing not supported');
+    }
+  };
+
+  const readNfcTag = async () => {
+    if ('NDEFReader' in window) {
+      try {
+        setIsNfcScanning(true);
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        
+        ndef.addEventListener("reading", async ({ serialNumber }) => {
+          setIsNfcScanning(false);
+          const isAuthorized = await checkNfcAuthorization(serialNumber);
+          
+          if (isAuthorized) {
+            setNfcSerial(serialNumber);
+          } else {
+            alert('NFC tag is not authorized');
+          }
+        });
+      } catch (error) {
+        setIsNfcScanning(false);
+        alert('NFC Error: ' + error);
+      }
+    } else {
+      alert('Web NFC not supported');
+    }
+  };
+
+  const handleStudentIdScan = (e) => {
+    const file = e.target.files[0];
+    setStudentId(file);
   };
 
   const handleSelfie = (e) => {
@@ -116,59 +120,42 @@ const StudentRegistration = () => {
     return await getDownloadURL(snapshot.ref);
   };
 
-  const writeNfcTag = async (documentId) => {
-    if ('NDEFWriter' in window) {
-      try {
-        const writer = new NDEFWriter();
-        await writer.write({
-          records: [{ recordType: "text", data: documentId }]
-        });
-        return true;
-      } catch (error) {
-        console.error('NFC Write Error:', error);
-        return false;
-      }
-    } else {
-      alert('Web NFC writing not supported');
-      return false;
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!window.confirm('Proceed with registration?')) return;
+    if (!window.confirm('Confirm registration?')) return;
 
     try {
       const selfieUrl = await uploadSelfie();
 
       const registrationData = {
         ...formData,
-        barcodeData,
+        nfcSerialNumber: nfcSerial,
+        studentId: studentId ? studentId.name : null,
         selfieUrl,
         createdAt: serverTimestamp()
       };
 
       const docRef = await addDoc(collection(db, 'RegisteredStudent'), registrationData);
       
-      alert('Please tap NFC tag to complete registration');
-      
-      const nfcWriteSuccess = await writeNfcTag(docRef.id);
-      
-      if (nfcWriteSuccess) {
-        alert('Registration complete!');
-        // Reset form
-        setBarcodeData(null);
-        setSelfie(null);
-        setFormData({
-          studentName: '',
-          email: '',
-          course: '',
-          campus: ''
-        });
-      } else {
-        alert('NFC write failed. Please try again.');
+      // Prompt to write document ID to NFC tag
+      if (window.confirm('Approach NFC tag to write document ID')) {
+        await writeNfcTag(docRef.id);
       }
+      
+      alert(`Registration Complete! Document ID: ${docRef.id}`);
+      
+      // Reset form
+      setNfcSerial(null);
+      setStudentId(null);
+      setSelfie(null);
+      setFormData({
+        studentName: '',
+        email: '',
+        course: '',
+        campus: ''
+      });
+
     } catch (error) {
       console.error('Registration Error:', error);
       alert('Registration failed');
@@ -179,25 +166,16 @@ const StudentRegistration = () => {
     <div className={styles.container}>
       <h1>Student Registration</h1>
       
-      {!barcodeData ? (
-        <div className={styles.scannerContainer}>
-          <video 
-            ref={videoRef}
-            className={styles.scanner}
-            style={{ display: isScanning ? 'block' : 'none' }}
-          />
-          <button 
-            onClick={startScanning}
-            className={styles.scanButton}
-            disabled={isScanning}
-          >
-            {isScanning ? 'Scanning...' : 'Scan Student ID'}
-          </button>
-        </div>
+      {!nfcSerial ? (
+        <button 
+          onClick={readNfcTag} 
+          className={styles.nfcButton}
+          disabled={isNfcScanning}
+        >
+          {isNfcScanning ? 'Scanning...' : 'Scan NFC Tag'}
+        </button>
       ) : (
         <form onSubmit={handleSubmit} className={styles.form}>
-          <p>Student ID: {barcodeData}</p>
-          
           <input
             type="text"
             placeholder="Student Name"
@@ -233,6 +211,28 @@ const StudentRegistration = () => {
             <option value="Online">Online Campus</option>
           </select>
           
+          {!studentId ? (
+            <>
+              <input 
+                type="file" 
+                ref={studentIdRef}
+                onChange={handleStudentIdScan}
+                accept="image/*"
+                capture="environment"
+                style={{display: 'none'}}
+              />
+              <button 
+                type="button" 
+                onClick={() => studentIdRef.current.click()}
+                className={styles.scanButton}
+              >
+                Scan Student ID
+              </button>
+            </>
+          ) : (
+            <p>Student ID: {studentId.name}</p>
+          )}
+          
           {!selfie ? (
             <>
               <input 
@@ -258,7 +258,7 @@ const StudentRegistration = () => {
           <button 
             type="submit" 
             className={styles.submitButton}
-            disabled={!selfie}
+            disabled={!studentId || !selfie}
           >
             Register
           </button>
