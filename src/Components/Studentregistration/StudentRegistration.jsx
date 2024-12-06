@@ -8,6 +8,8 @@ import {
   getStorage, ref, uploadBytes, getDownloadURL 
 } from 'firebase/storage';
 import styles from './StudentRegistration.module.css';
+// import { BarcodeScanner } from '@zxing/browser';
+import { BrowserMultiFormatReader } from '@zxing/library';
 
 const firebaseConfig = {
     apiKey: "AIzaSyC8tDVbDIrKuylsyF3rbDSSPlzsEHXqZIs",
@@ -40,44 +42,42 @@ const StudentRegistration = () => {
   const streamRef = useRef(null);
 
   const startScanner = async () => {
-    if (!('BarcodeDetector' in window)) {
-      alert('Barcode Scanner not supported');
-      return;
-    }
-
     try {
       setIsScanning(true);
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
+      
       streamRef.current = stream;
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
-
-      const barcodeDetector = new BarcodeDetector({
-        formats: ['code_128', 'code_39', 'ean_13', 'ean_8']
-      });
-
+  
+      const codeReader = new BrowserMultiFormatReader();
+      
       const detectCode = async () => {
         if (!isScanning) return;
         
         try {
-          const barcodes = await barcodeDetector.detect(videoRef.current);
-          if (barcodes.length > 0) {
+          const result = await codeReader.decodeOnceFromVideoElement(videoRef.current);
+          if (result) {
             setFormData(prev => ({
               ...prev,
-              studentId: barcodes[0].rawValue
+              studentId: result.text
             }));
             stopScanner();
             return;
           }
         } catch (error) {
-          console.error('Barcode detection error:', error);
+          // Ignore errors during scanning
         }
         
         requestAnimationFrame(detectCode);
       };
-
+  
       requestAnimationFrame(detectCode);
     } catch (error) {
       console.error('Scanner Error:', error);
