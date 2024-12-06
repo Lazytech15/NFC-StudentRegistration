@@ -69,23 +69,41 @@ const StudentRegistration = () => {
               return;
             }
 
-            const selfieUrl = await uploadSelfie();
-            const registrationData = {
-              ...formData,
-              nfcSerialNumber: serialNumber,
-              selfieUrl,
-              createdAt: serverTimestamp()
-            };
+            // Generate a unique ID for both NFC and Firestore
+            const uniqueId = crypto.randomUUID();
 
-            const docRef = await addDoc(collection(db, 'RegisteredStudent'), registrationData);
+            // Write to NFC first
+            try {
+              const writer = new window.NDEFWriter();
+              await writer.write({
+                records: [{ recordType: "text", data: uniqueId }]
+              });
+              alert('Successfully wrote ID to NFC tag!');
+            } catch (writeError) {
+              reject(new Error('Failed to write to NFC tag: ' + writeError.message));
+              return;
+            }
 
-            // Create a new NDEFWriter instance using the window object
-            const writer = new window.NDEFWriter();
-            await writer.write({
-              records: [{ recordType: "text", data: docRef.id }]
-            });
+            // After successful NFC write, proceed with Firebase operations
+            try {
+              const selfieUrl = await uploadSelfie();
+              const registrationData = {
+                ...formData,
+                nfcSerialNumber: serialNumber,
+                selfieUrl,
+                createdAt: serverTimestamp()
+              };
 
-            resolve(docRef.id);
+              // Use the same ID for Firestore document
+              const docRef = await addDoc(collection(db, 'RegisteredStudent'), {
+                ...registrationData,
+                id: uniqueId
+              });
+
+              resolve(uniqueId);
+            } catch (saveError) {
+              reject(new Error('Failed to save data: ' + saveError.message));
+            }
           } catch (error) {
             reject(error);
           }
