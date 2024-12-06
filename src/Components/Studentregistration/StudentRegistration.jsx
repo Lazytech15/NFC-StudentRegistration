@@ -50,9 +50,9 @@ const StudentRegistration = () => {
   };
 
   const writeNfcAndSave = async () => {
+    // Check for NFC Web API support
     if (!('NDEFReader' in window)) {
-      alert('NFC not supported on this device');
-      return;
+      throw new Error('NFC not supported on this device');
     }
 
     try {
@@ -79,10 +79,15 @@ const StudentRegistration = () => {
 
             const docRef = await addDoc(collection(db, 'RegisteredStudent'), registrationData);
 
-            const writer = new NDEFWriter();
-            await writer.write({
-              records: [{ recordType: "text", data: docRef.id }]
-            });
+            // Check if NDEFWriter is available before writing
+            if ('NDEFWriter' in window) {
+              const writer = new NDEFWriter();
+              await writer.write({
+                records: [{ recordType: "text", data: docRef.id }]
+              });
+            } else {
+              console.warn('NDEFWriter not supported, skipping NFC tag writing');
+            }
 
             resolve(docRef.id);
           } catch (error) {
@@ -109,6 +114,12 @@ const StudentRegistration = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Check NFC support before confirming
+    if (!('NDEFReader' in window)) {
+      alert('NFC is not supported on this device');
+      return;
+    }
+
     if (!window.confirm('Approach NFC tag to complete registration')) return;
 
     try {
@@ -134,6 +145,12 @@ const StudentRegistration = () => {
   return (
     <div className={styles.container}>
       <h1>Student Registration</h1>
+      
+      {!('NDEFReader' in window) && (
+        <div style={{color: 'red', marginBottom: '15px'}}>
+          NFC is not supported on this device
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className={styles.form}>
         <input
@@ -204,7 +221,7 @@ const StudentRegistration = () => {
         <button 
           type="submit"
           className={styles.submitButton}
-          disabled={!formData.studentId || !selfie || isSaving}
+          disabled={!formData.studentId || !selfie || isSaving || !('NDEFReader' in window)}
         >
           {isSaving ? 'Saving...' : 'Complete Registration with NFC'}
         </button>
