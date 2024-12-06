@@ -50,14 +50,14 @@ const StudentRegistration = () => {
   };
 
   const writeNfcAndSave = async () => {
-    // Check if both NDEFReader and NDEFWriter are supported
-    if (!('NDEFReader' in window) || !('NDEFWriter' in window)) {
-      throw new Error('NFC is not supported on this device');
+    // Check for NFC Web API support
+    if (!('NDEFReader' in window)) {
+      throw new Error('NFC not supported on this device');
     }
 
     try {
       setIsSaving(true);
-      const ndef = new window.NDEFReader();
+      const ndef = new NDEFReader();
       await ndef.scan();
 
       return new Promise((resolve, reject) => {
@@ -69,41 +69,27 @@ const StudentRegistration = () => {
               return;
             }
 
-            // Generate a unique ID for both NFC and Firestore
-            const uniqueId = crypto.randomUUID();
+            const selfieUrl = await uploadSelfie();
+            const registrationData = {
+              ...formData,
+              nfcSerialNumber: serialNumber,
+              selfieUrl,
+              createdAt: serverTimestamp()
+            };
 
-            // Write to NFC first
-            try {
-              const writer = new window.NDEFWriter();
+            const docRef = await addDoc(collection(db, 'RegisteredStudent'), registrationData);
+
+            // Check if NDEFWriter is available before writing
+            if ('NDEFWriter' in window) {
+              const writer = new NDEFWriter();
               await writer.write({
-                records: [{ recordType: "text", data: uniqueId }]
+                records: [{ recordType: "text", data: docRef.id }]
               });
-              alert('Successfully wrote ID to NFC tag!');
-            } catch (writeError) {
-              reject(new Error('Failed to write to NFC tag: ' + writeError.message));
-              return;
+            } else {
+              console.warn('NDEFWriter not supported, skipping NFC tag writing');
             }
 
-            // After successful NFC write, proceed with Firebase operations
-            try {
-              const selfieUrl = await uploadSelfie();
-              const registrationData = {
-                ...formData,
-                nfcSerialNumber: serialNumber,
-                selfieUrl,
-                createdAt: serverTimestamp()
-              };
-
-              // Use the same ID for Firestore document
-              const docRef = await addDoc(collection(db, 'RegisteredStudent'), {
-                ...registrationData,
-                id: uniqueId
-              });
-
-              resolve(uniqueId);
-            } catch (saveError) {
-              reject(new Error('Failed to save data: ' + saveError.message));
-            }
+            resolve(docRef.id);
           } catch (error) {
             reject(error);
           }
@@ -128,6 +114,12 @@ const StudentRegistration = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Check NFC support before confirming
+    if (!('NDEFReader' in window)) {
+      alert('NFC is not supported on this device');
+      return;
+    }
+
     if (!window.confirm('Approach NFC tag to complete registration')) return;
 
     try {
@@ -153,6 +145,12 @@ const StudentRegistration = () => {
   return (
     <div className={styles.container}>
       <h1>Student Registration</h1>
+      
+      {!('NDEFReader' in window) && (
+        <div style={{color: 'red', marginBottom: '15px'}}>
+          NFC is not supported on this device
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className={styles.form}>
         <input
@@ -223,7 +221,7 @@ const StudentRegistration = () => {
         <button 
           type="submit"
           className={styles.submitButton}
-          disabled={!formData.studentId || !selfie || isSaving}
+          disabled={!formData.studentId || !selfie || isSaving || !('NDEFReader' in window)}
         >
           {isSaving ? 'Saving...' : 'Complete Registration with NFC'}
         </button>
