@@ -1,9 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, 
   doc, 
-  getDoc, 
   addDoc, 
   collection, 
   serverTimestamp 
@@ -14,7 +13,6 @@ import {
   uploadBytes, 
   getDownloadURL 
 } from 'firebase/storage';
-import { BarcodeScannerComponent } from "@zxing/browser";
 import styles from './StudentRegistration.module.css';
 
 const firebaseConfig = {
@@ -35,7 +33,6 @@ const StudentRegistration = () => {
   const [barcodeData, setBarcodeData] = useState(null);
   const [selfie, setSelfie] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [nfcDocId, setNfcDocId] = useState(null);
   const [formData, setFormData] = useState({
     studentName: '',
     email: '',
@@ -43,29 +40,64 @@ const StudentRegistration = () => {
     campus: ''
   });
 
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
   const fileInputRef = useRef(null);
-  const scannerRef = useRef(null);
 
-  const handleScan = async (result) => {
-    if (result) {
-      setBarcodeData(result.text);
-      setIsScanning(false);
-      if (scannerRef.current) {
-        await scannerRef.current.stop();
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
-    }
-  };
+    };
+  }, []);
 
   const startScanning = async () => {
-    setIsScanning(true);
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.start();
-      } catch (err) {
-        console.error('Scanner Error:', err);
-        alert('Failed to start scanner');
-        setIsScanning(false);
-      }
+    if (!('BarcodeDetector' in window)) {
+      alert('Barcode detection not supported in this browser');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      
+      streamRef.current = stream;
+      videoRef.current.srcObject = stream;
+      setIsScanning(true);
+
+      const barcodeDetector = new BarcodeDetector({
+        formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e']
+      });
+
+      const checkForBarcode = async () => {
+        if (!videoRef.current || !isScanning) return;
+
+        try {
+          const barcodes = await barcodeDetector.detect(videoRef.current);
+          if (barcodes.length > 0) {
+            setBarcodeData(barcodes[0].rawValue);
+            setIsScanning(false);
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(track => track.stop());
+            }
+          } else {
+            requestAnimationFrame(checkForBarcode);
+          }
+        } catch (err) {
+          console.error('Barcode detection error:', err);
+        }
+      };
+
+      videoRef.current.onloadedmetadata = () => {
+        videoRef.current.play();
+        checkForBarcode();
+      };
+    } catch (err) {
+      console.error('Camera access error:', err);
+      alert('Failed to access camera');
+      setIsScanning(false);
     }
   };
 
@@ -118,7 +150,6 @@ const StudentRegistration = () => {
       };
 
       const docRef = await addDoc(collection(db, 'RegisteredStudent'), registrationData);
-      setNfcDocId(docRef.id);
       
       alert('Please tap NFC tag to complete registration');
       
@@ -129,7 +160,6 @@ const StudentRegistration = () => {
         // Reset form
         setBarcodeData(null);
         setSelfie(null);
-        setNfcDocId(null);
         setFormData({
           studentName: '',
           email: '',
@@ -150,16 +180,12 @@ const StudentRegistration = () => {
       <h1>Student Registration</h1>
       
       {!barcodeData ? (
-        <div>
-          {isScanning && (
-            <BarcodeScannerComponent
-              ref={scannerRef}
-              onResult={handleScan}
-              constraints={{
-                facingMode: 'environment'
-              }}
-            />
-          )}
+        <div className={styles.scannerContainer}>
+          <video 
+            ref={videoRef}
+            className={styles.scanner}
+            style={{ display: isScanning ? 'block' : 'none' }}
+          />
           <button 
             onClick={startScanning}
             className={styles.scanButton}
