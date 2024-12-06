@@ -8,8 +8,6 @@ import {
   getStorage, ref, uploadBytes, getDownloadURL 
 } from 'firebase/storage';
 import styles from './StudentRegistration.module.css';
-// import { BarcodeScanner } from '@zxing/browser';
-import { BrowserMultiFormatReader } from '@zxing/library';
 
 const firebaseConfig = {
     apiKey: "AIzaSyC8tDVbDIrKuylsyF3rbDSSPlzsEHXqZIs",
@@ -34,65 +32,9 @@ const StudentRegistration = () => {
     studentId: '',
   });
   const [selfie, setSelfie] = useState(null);
-  const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
   const fileInputRef = useRef(null);
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-
-  const startScanner = async () => {
-    try {
-      setIsScanning(true);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
-      
-      streamRef.current = stream;
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-  
-      const codeReader = new BrowserMultiFormatReader();
-      
-      const detectCode = async () => {
-        if (!isScanning) return;
-        
-        try {
-          const result = await codeReader.decodeOnceFromVideoElement(videoRef.current);
-          if (result) {
-            setFormData(prev => ({
-              ...prev,
-              studentId: result.text
-            }));
-            stopScanner();
-            return;
-          }
-        } catch (error) {
-          // Ignore errors during scanning
-        }
-        
-        requestAnimationFrame(detectCode);
-      };
-  
-      requestAnimationFrame(detectCode);
-    } catch (error) {
-      console.error('Scanner Error:', error);
-      alert('Failed to start barcode scanner');
-      setIsScanning(false);
-    }
-  };
-
-  const stopScanner = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setIsScanning(false);
-  };
 
   const handleSelfie = (e) => {
     const file = e.target.files[0];
@@ -229,20 +171,13 @@ const StudentRegistration = () => {
           <option value="Online">Online Campus</option>
         </select>
 
-        {isScanning ? (
-          <div className={styles.scannerContainer}>
-            <video ref={videoRef} className={styles.scanner} />
-            <button type="button" onClick={stopScanner}>Cancel Scan</button>
-          </div>
-        ) : (
-          <button type="button" onClick={startScanner}>
-            Scan Student ID Barcode
-          </button>
-        )}
-        
-        {formData.studentId && (
-          <p>Student ID: {formData.studentId}</p>
-        )}
+        <input
+          type="text"
+          placeholder="Student ID"
+          value={formData.studentId}
+          onChange={(e) => setFormData({...formData, studentId: e.target.value})}
+          required
+        />
         
         {!selfie ? (
           <>
