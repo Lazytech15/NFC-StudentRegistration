@@ -82,8 +82,7 @@ const StudentRegistration = () => {
             try {
               await ndef.write({
                 records: [{
-                  recordType: "mime",
-                  mediaType: "text/plain",
+                  recordType: "text",
                   data: new TextEncoder().encode(docRef.id)
                 }]
               });
