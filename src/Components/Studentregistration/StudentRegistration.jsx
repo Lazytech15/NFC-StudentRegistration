@@ -14,7 +14,7 @@ import {
   uploadBytes, 
   getDownloadURL 
 } from 'firebase/storage';
-import Quagga from 'quagga';
+import { BarcodeScannerComponent } from "@zxing/browser";
 import styles from './StudentRegistration.module.css';
 
 const firebaseConfig = {
@@ -43,38 +43,30 @@ const StudentRegistration = () => {
     campus: ''
   });
 
-  const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+  const scannerRef = useRef(null);
 
-  const initBarcodeScanner = () => {
-    Quagga.init({
-      inputStream: {
-        name: "Live",
-        type: "LiveStream",
-        target: videoRef.current,
-        constraints: {
-          facingMode: "environment"
-        },
-      },
-      decoder: {
-        readers: ["code_128_reader", "ean_reader", "ean_8_reader", "code_39_reader", "upc_reader"]
+  const handleScan = async (result) => {
+    if (result) {
+      setBarcodeData(result.text);
+      setIsScanning(false);
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
       }
-    }, (err) => {
-      if (err) {
-        console.error("Barcode Scanner Error:", err);
-        return;
-      }
-      Quagga.start();
-      setIsScanning(true);
-    });
+    }
+  };
 
-    Quagga.onDetected((result) => {
-      if (result.codeResult.code) {
-        setBarcodeData(result.codeResult.code);
-        Quagga.stop();
+  const startScanning = async () => {
+    setIsScanning(true);
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.start();
+      } catch (err) {
+        console.error('Scanner Error:', err);
+        alert('Failed to start scanner');
         setIsScanning(false);
       }
-    });
+    }
   };
 
   const handleSelfie = (e) => {
@@ -159,9 +151,17 @@ const StudentRegistration = () => {
       
       {!barcodeData ? (
         <div>
-          <div ref={videoRef} className={styles.videoContainer}></div>
+          {isScanning && (
+            <BarcodeScannerComponent
+              ref={scannerRef}
+              onResult={handleScan}
+              constraints={{
+                facingMode: 'environment'
+              }}
+            />
+          )}
           <button 
-            onClick={initBarcodeScanner}
+            onClick={startScanning}
             className={styles.scanButton}
             disabled={isScanning}
           >
