@@ -50,7 +50,6 @@ const StudentRegistration = () => {
   };
 
   const writeNfcAndSave = async () => {
-    // Check for NFC Web API support
     if (!('NDEFReader' in window)) {
       throw new Error('NFC not supported on this device');
     }
@@ -79,14 +78,46 @@ const StudentRegistration = () => {
 
             const docRef = await addDoc(collection(db, 'RegisteredStudent'), registrationData);
 
-            // Check if NDEFWriter is available before writing
-            if ('NDEFWriter' in window) {
-              const writer = new NDEFWriter();
-              await writer.write({
-                records: [{ recordType: "text", data: docRef.id }]
+            // New NFC writing approach using raw NDEF message format
+            try {
+              await ndef.write({
+                records: [{
+                  recordType: "mime",
+                  mediaType: "text/plain",
+                  data: new TextEncoder().encode(docRef.id)
+                }]
               });
-            } else {
-              console.warn('NDEFWriter not supported, skipping NFC tag writing');
+              
+              // Verify the write was successful
+              const verifyWriter = new NDEFReader();
+              await verifyWriter.scan();
+              
+              verifyWriter.addEventListener("reading", ({ message }) => {
+                const verified = message.records.some(record => 
+                  record.mediaType === "text/plain" && 
+                  new TextDecoder().decode(record.data) === docRef.id
+                );
+                
+                if (!verified) {
+                  console.warn('NFC write verification failed');
+                }
+              });
+              
+            } catch (writeError) {
+              console.error('NFC Write Error:', writeError);
+              // Fall back to alternative writing method if available
+              try {
+                await navigator.nfc.push({
+                  type: "NDEF",
+                  records: [{
+                    type: "text/plain",
+                    payload: docRef.id
+                  }]
+                });
+              } catch (fallbackError) {
+                console.error('Fallback NFC Write Error:', fallbackError);
+                // Continue even if writing fails - at least the registration is saved
+              }
             }
 
             resolve(docRef.id);
