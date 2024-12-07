@@ -23,6 +23,33 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+const StatusModal = ({ message, type, isProcessing }) => {
+  if (!message) return null;
+  
+  const getStatusClass = () => {
+    switch (type) {
+      case 'warning':
+        return styles.statusWarning;
+      case 'error':
+        return styles.statusError;
+      case 'success':
+        return styles.statusSuccess;
+      default:
+        return styles.statusInfo;
+    }
+  };
+
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.modalContent}>
+        <div className={`${styles.status} ${getStatusClass()} ${isProcessing ? styles['animate-pulse'] : ''}`}>
+          {message}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const StudentRegistration = () => {
   const [formData, setFormData] = useState({
     studentName: '',
@@ -35,8 +62,14 @@ const StudentRegistration = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [nfcReader, setNfcReader] = useState(null);
+  const [statusType, setStatusType] = useState('info');
   
   const fileInputRef = useRef(null);
+
+  const updateStatus = (message, type = 'info') => {
+    setStatus(message);
+    setStatusType(type);
+  };
 
   useEffect(() => {
     // Cleanup function to abort NFC reader when component unmounts
@@ -138,6 +171,7 @@ const StudentRegistration = () => {
         ndef.addEventListener("reading", handleReading, { once: true });
       });
     } catch (error) {
+      updateStatus(error.message, 'error');
       throw error;
     }
   };
@@ -193,11 +227,12 @@ const StudentRegistration = () => {
     }
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!('NDEFReader' in window)) {
-      alert('NFC is not supported on this device');
+      updateStatus('NFC is not supported on this device', 'warning');
       return;
     }
 
@@ -205,13 +240,14 @@ const StudentRegistration = () => {
 
     try {
       const docId = await writeNfcAndSave();
-      setStatus('Registration completed successfully!');
-      alert(`Registration successful! Document ID: ${docId}`);
-      resetForm();
+      updateStatus('Registration completed successfully!', 'success');
+      setTimeout(() => {
+        updateStatus('');
+        resetForm();
+      }, 3000);
     } catch (error) {
       console.error('Registration Error:', error);
-      setStatus('Registration failed: ' + error.message);
-      alert('Registration failed: ' + error.message);
+      updateStatus(`Registration failed: ${error.message}`, 'error');
     } finally {
       setIsSaving(false);
       if (nfcReader) {
@@ -225,16 +261,13 @@ const StudentRegistration = () => {
     <div className={styles.container}>
       <h1>Student Registration</h1>
       
-      {!('NDEFReader' in window) && (
-        <div className="text-red-500 mb-4">
-          NFC is not supported on this device
-        </div>
-      )}
-      
-      {status && (
-        <div className={`text-blue-500 mb-4 ${isSaving ? 'animate-pulse' : ''}`}>
-          {status}
-        </div>
+      {/* Status Modal */}
+      {(!('NDEFReader' in window) || status) && (
+        <StatusModal 
+          message={!('NDEFReader' in window) ? 'NFC is not supported on this device' : status}
+          type={!('NDEFReader' in window) ? 'warning' : statusType}
+          isProcessing={isSaving}
+        />
       )}
       
       <form onSubmit={handleSubmit} className={styles.form}>
