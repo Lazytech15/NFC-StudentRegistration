@@ -124,3 +124,28 @@
   .animate-pulse {
     animation: pulse 1.5s ease-in-out infinite;
   }
+
+  .scannerContainer {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+  }
+  
+  .scanButton {
+    padding: 0.5rem 1rem;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .scanButton:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+  
+  .reader {
+    width: 100%;
+    margin: 1rem 0;
+  }
