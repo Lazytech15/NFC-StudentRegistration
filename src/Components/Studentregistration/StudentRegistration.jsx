@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, doc, getDoc, addDoc, 
@@ -64,10 +63,8 @@ const StudentRegistration = () => {
   const [status, setStatus] = useState('');
   const [nfcReader, setNfcReader] = useState(null);
   const [statusType, setStatusType] = useState('info');
-  const [isScanning, setIsScanning] = useState(false);
   
   const fileInputRef = useRef(null);
-  const scannerRef = useRef(null);
 
   const updateStatus = (message, type = 'info') => {
     setStatus(message);
@@ -82,38 +79,6 @@ const StudentRegistration = () => {
       }
     };
   }, [nfcReader]);
-
-  const initializeScanner = () => {
-    setIsScanning(true);
-    const config = {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
-      aspectRatio: 1.0
-    };
-
-    const scanner = new Html5QrcodeScanner(
-      "reader",
-      config,
-      /* verbose= */ false
-    );
-
-    const onScanSuccess = (decodedText, decodedResult) => {
-      setFormData(prev => ({ ...prev, studentId: decodedText }));
-      updateStatus('Barcode scanned successfully!', 'success');
-      if (scanner) {
-        scanner.clear();
-        setIsScanning(false);
-      }
-    };
-
-    const onScanFailure = (error) => {
-      // Handle scan failure if needed
-      console.warn(`Code scan error = ${error}`);
-    };
-
-    scanner.render(onScanSuccess, onScanFailure);
-    scannerRef.current = scanner;
-  };
 
   const handleSelfie = (e) => {
     const file = e.target.files[0];
@@ -331,29 +296,14 @@ const StudentRegistration = () => {
           disabled={isSaving}
         />
 
-        <div className={styles.scannerContainer}>
-          <input
-            type="text"
-            placeholder="Student ID"
-            value={formData.studentId}
-            onChange={(e) => setFormData({...formData, studentId: e.target.value})}
-            required
-            disabled={isSaving}
-          />
-          <button 
-            type="button"
-            onClick={() => isScanning ? scannerRef.current?.clear() : initializeScanner()}
-            className={styles.scanButton}
-            disabled={isSaving}
-          >
-            {isScanning ? 'Stop Scanning' : 'Scan Barcode'}
-          </button>
-        </div>
-
-        {/* Scanner container */}
-        {isScanning && (
-          <div id="reader" className={styles.reader}></div>
-        )}
+        <input
+          type="text"
+          placeholder="Student ID"
+          value={formData.studentId}
+          onChange={(e) => setFormData({...formData, studentId: e.target.value})}
+          required
+          disabled={isSaving}
+        />
         
         <select
           value={formData.campus}
