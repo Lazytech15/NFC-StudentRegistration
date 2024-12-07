@@ -140,7 +140,7 @@ const StudentRegistration = () => {
               });
               
               setStatus('Verifying NFC write...');
-              await verifyNfcWrite(docRef.id);
+              await verifyNfcWrite(docRef.id, ndef);
               
             } catch (writeError) {
               console.error('NFC Write Error:', writeError);
@@ -160,7 +160,7 @@ const StudentRegistration = () => {
             }
 
             // Remove the event listener after successful processing
-            ndef.removeEventListener("reading", handleReading);
+            ndef.addEventListener("reading", handleReading, { once: true });
             resolve(docRef.id);
           } catch (error) {
             ndef.removeEventListener("reading", handleReading);
@@ -176,16 +176,14 @@ const StudentRegistration = () => {
     }
   };
 
-  const verifyNfcWrite = async (expectedId) => {
-    const verifyWriter = new NDEFReader();
-    await verifyWriter.scan();
-    
+  const verifyNfcWrite = async (expectedId, existingReader) => {
+    // Use the existing reader instead of creating a new one
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Verification timeout'));
       }, 5000);
-
-      verifyWriter.addEventListener("reading", ({ message }) => {
+  
+      existingReader.addEventListener("reading", ({ message }) => {
         clearTimeout(timeout);
         const verified = message.records.some(record => 
           record.recordType === "text" && 
