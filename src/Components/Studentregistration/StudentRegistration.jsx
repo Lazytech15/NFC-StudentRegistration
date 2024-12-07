@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, doc, getDoc, addDoc, 
@@ -33,8 +33,19 @@ const StudentRegistration = () => {
   });
   const [selfie, setSelfie] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState('');
+  const [nfcReader, setNfcReader] = useState(null);
   
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    // Cleanup function to abort NFC reader when component unmounts
+    return () => {
+      if (nfcReader) {
+        nfcReader.abort();
+      }
+    };
+  }, [nfcReader]);
 
   const handleSelfie = (e) => {
     const file = e.target.files[0];
@@ -43,6 +54,7 @@ const StudentRegistration = () => {
 
   const uploadSelfie = async () => {
     if (!selfie) return null;
+    setStatus('Uploading selfie...');
     const safeEmail = formData.email.replace(/[@.]/g, '_');
     const storageRef = ref(storage, `users/${safeEmail}/profile/${selfie.name}`);
     const snapshot = await uploadBytes(storageRef, selfie);
@@ -56,18 +68,24 @@ const StudentRegistration = () => {
 
     try {
       setIsSaving(true);
+      setStatus('Waiting for NFC tag...');
+      
       const ndef = new NDEFReader();
+      setNfcReader(ndef);
       await ndef.scan();
 
       return new Promise((resolve, reject) => {
-        ndef.addEventListener("reading", async ({ serialNumber }) => {
+        // Using once to ensure the event listener only fires once
+        const handleReading = async ({ serialNumber }) => {
           try {
+            setStatus('Checking NFC authorization...');
             const isAuthorized = await checkNfcAuthorization(serialNumber);
             if (!isAuthorized) {
               reject(new Error('Unauthorized NFC tag'));
               return;
             }
 
+            setStatus('Uploading data...');
             const selfieUrl = await uploadSelfie();
             const registrationData = {
               ...formData,
@@ -76,9 +94,10 @@ const StudentRegistration = () => {
               createdAt: serverTimestamp()
             };
 
+            setStatus('Saving to database...');
             const docRef = await addDoc(collection(db, 'RegisteredStudent'), registrationData);
 
-            // New NFC writing approach using raw NDEF message format
+            setStatus('Writing to NFC tag...');
             try {
               await ndef.write({
                 records: [{
@@ -87,24 +106,12 @@ const StudentRegistration = () => {
                 }]
               });
               
-              // Verify the write was successful
-              const verifyWriter = new NDEFReader();
-              await verifyWriter.scan();
-              
-              verifyWriter.addEventListener("reading", ({ message }) => {
-                const verified = message.records.some(record => 
-                  record.mediaType === "text/plain" && 
-                  new TextDecoder().decode(record.data) === docRef.id
-                );
-                
-                if (!verified) {
-                  console.warn('NFC write verification failed');
-                }
-              });
+              setStatus('Verifying NFC write...');
+              await verifyNfcWrite(docRef.id);
               
             } catch (writeError) {
               console.error('NFC Write Error:', writeError);
-              // Fall back to alternative writing method if available
+              setStatus('Attempting alternative write method...');
               try {
                 await navigator.nfc.push({
                   type: "NDEF",
@@ -115,19 +122,49 @@ const StudentRegistration = () => {
                 });
               } catch (fallbackError) {
                 console.error('Fallback NFC Write Error:', fallbackError);
-                // Continue even if writing fails - at least the registration is saved
+                setStatus('NFC write failed, but registration saved');
               }
             }
 
+            // Remove the event listener after successful processing
+            ndef.removeEventListener("reading", handleReading);
             resolve(docRef.id);
           } catch (error) {
+            ndef.removeEventListener("reading", handleReading);
             reject(error);
           }
-        });
+        };
+
+        ndef.addEventListener("reading", handleReading, { once: true });
       });
     } catch (error) {
       throw error;
     }
+  };
+
+  const verifyNfcWrite = async (expectedId) => {
+    const verifyWriter = new NDEFReader();
+    await verifyWriter.scan();
+    
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Verification timeout'));
+      }, 5000);
+
+      verifyWriter.addEventListener("reading", ({ message }) => {
+        clearTimeout(timeout);
+        const verified = message.records.some(record => 
+          record.recordType === "text" && 
+          new TextDecoder().decode(record.data) === expectedId
+        );
+        
+        if (!verified) {
+          reject(new Error('NFC write verification failed'));
+        } else {
+          resolve();
+        }
+      }, { once: true });
+    });
   };
 
   const checkNfcAuthorization = async (serialNumber) => {
@@ -141,10 +178,24 @@ const StudentRegistration = () => {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      studentName: '',
+      email: '',
+      course: '',
+      campus: '',
+      studentId: ''
+    });
+    setSelfie(null);
+    setStatus('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Check NFC support before confirming
     if (!('NDEFReader' in window)) {
       alert('NFC is not supported on this device');
       return;
@@ -154,21 +205,19 @@ const StudentRegistration = () => {
 
     try {
       const docId = await writeNfcAndSave();
+      setStatus('Registration completed successfully!');
       alert(`Registration successful! Document ID: ${docId}`);
-      
-      setFormData({
-        studentName: '',
-        email: '',
-        course: '',
-        campus: '',
-        studentId: ''
-      });
-      setSelfie(null);
+      resetForm();
     } catch (error) {
       console.error('Registration Error:', error);
+      setStatus('Registration failed: ' + error.message);
       alert('Registration failed: ' + error.message);
     } finally {
       setIsSaving(false);
+      if (nfcReader) {
+        nfcReader.abort();
+        setNfcReader(null);
+      }
     }
   };
 
@@ -177,8 +226,14 @@ const StudentRegistration = () => {
       <h1>Student Registration</h1>
       
       {!('NDEFReader' in window) && (
-        <div style={{color: 'red', marginBottom: '15px'}}>
+        <div className="text-red-500 mb-4">
           NFC is not supported on this device
+        </div>
+      )}
+      
+      {status && (
+        <div className={`text-blue-500 mb-4 ${isSaving ? 'animate-pulse' : ''}`}>
+          {status}
         </div>
       )}
       
@@ -189,6 +244,7 @@ const StudentRegistration = () => {
           value={formData.studentName}
           onChange={(e) => setFormData({...formData, studentName: e.target.value})}
           required
+          disabled={isSaving}
         />
         
         <input
@@ -197,6 +253,7 @@ const StudentRegistration = () => {
           value={formData.email}
           onChange={(e) => setFormData({...formData, email: e.target.value})}
           required
+          disabled={isSaving}
         />
         
         <input
@@ -205,12 +262,14 @@ const StudentRegistration = () => {
           value={formData.course}
           onChange={(e) => setFormData({...formData, course: e.target.value})}
           required
+          disabled={isSaving}
         />
         
         <select
           value={formData.campus}
           onChange={(e) => setFormData({...formData, campus: e.target.value})}
           required
+          disabled={isSaving}
         >
           <option value="">Select Campus</option>
           <option value="Main">Main Campus</option>
@@ -224,6 +283,7 @@ const StudentRegistration = () => {
           value={formData.studentId}
           onChange={(e) => setFormData({...formData, studentId: e.target.value})}
           required
+          disabled={isSaving}
         />
         
         {!selfie ? (
@@ -235,11 +295,13 @@ const StudentRegistration = () => {
               accept="image/*"
               capture="user"
               style={{display: 'none'}}
+              disabled={isSaving}
             />
             <button 
               type="button"
               onClick={() => fileInputRef.current.click()}
               className={styles.selfieButton}
+              disabled={isSaving}
             >
               Take Selfie
             </button>
@@ -250,10 +312,10 @@ const StudentRegistration = () => {
         
         <button 
           type="submit"
-          className={styles.submitButton}
+          className={`${styles.submitButton} ${isSaving ? 'animate-pulse' : ''}`}
           disabled={!formData.studentId || !selfie || isSaving || !('NDEFReader' in window)}
         >
-          {isSaving ? 'Saving...' : 'Complete Registration with NFC'}
+          {isSaving ? 'Processing...' : 'Complete Registration with NFC'}
         </button>
       </form>
     </div>
