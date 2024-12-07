@@ -295,18 +295,6 @@ const StudentRegistration = () => {
           required
           disabled={isSaving}
         />
-        
-        <select
-          value={formData.campus}
-          onChange={(e) => setFormData({...formData, campus: e.target.value})}
-          required
-          disabled={isSaving}
-        >
-          <option value="">Select Campus</option>
-          <option value="Main">Main Campus</option>
-          <option value="North">North Campus</option>
-          <option value="Online">Online Campus</option>
-        </select>
 
         <input
           type="text"
@@ -316,6 +304,23 @@ const StudentRegistration = () => {
           required
           disabled={isSaving}
         />
+        
+        <select
+          value={formData.campus}
+          onChange={(e) => setFormData({...formData, campus: e.target.value})}
+          required
+          disabled={isSaving}
+        >
+          <option value="">Select Campus</option>
+          <option value="Cainta Campus">Main Campus</option>
+          <option value="Antipolo Campus">North Campus</option>
+          <option value="San Mateo Campus">Online Campus</option>
+          <option value="Binangonan Campus">Online Campus</option>
+          <option value="Sumulong Campus">Online Campus</option>
+          <option value="Taytay Campus">Online Campus</option>
+          <option value="Angono Campus">Online Campus</option>
+          <option value="Cogeo Campus">Online Campus</option>
+        </select>
         
         {!selfie ? (
           <>
