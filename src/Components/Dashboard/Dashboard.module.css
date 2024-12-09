@@ -221,9 +221,9 @@
     }
   
     .sidebarOpen {
-      left: 0;
+      left: 5px;
       height: 98%;
-      
+      border-radius: 0.5em;
     }
   
     .hamburgerBtn {
