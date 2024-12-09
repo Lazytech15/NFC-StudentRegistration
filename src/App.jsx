@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './Components/Dashboard/Dashboard';
 import CreateEvent from './Components/Create-event/CreateEvent';
 import StudentRegistration from './Components/Studentregistration/StudentRegistration';
