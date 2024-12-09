@@ -1,0 +1,134 @@
+.event_list_container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  
+  .event_list_container h2 {
+    color: #333;
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+  }
+  
+  .events_grid {
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+  
+  .event_card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    margin-bottom: 10px;
+  }
+  
+  .card_header {
+    padding: 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 10px;
+  }
+  
+  .card_basic_info h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.2rem;
+  }
+  
+  .card_basic_info p {
+    margin: 0.5rem 0;
+    color: #666;
+    font-size: 0.9rem;
+  }
+  
+  .card_details {
+    padding: 1rem;
+  }
+  
+  .event_info {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+  
+  .event_info p {
+    margin: 0.5rem 0;
+    color: #4a5568;
+  }
+  
+  .table_container {
+    overflow-x: auto;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+  
+  th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+  
+  th {
+    background-color: #f8f9fa;
+    color: #2d3748;
+    font-weight: 600;
+  }
+  
+  .action_buttons {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .edit_btn, .delete_btn {
+    padding: 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+  }
+  
+  .edit_btn {
+    background-color: #4299e1;
+    color: white;
+  }
+  
+  .delete_btn {
+    background-color: #f56565;
+    color: white;
+  }
+  
+  .edit_btn:hover {
+    background-color: #3182ce;
+  }
+  
+  .delete_btn:hover {
+    background-color: #e53e3e;
+  }
+  
+  @media (max-width: 768px) {
+    .events_grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .table_container {
+      margin: 0 -1rem;
+    }
+  
+    th, td {
+      padding: 0.5rem;
+      font-size: 0.9rem;
+    }
+  }

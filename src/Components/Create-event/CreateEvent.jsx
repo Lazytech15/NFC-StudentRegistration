@@ -1,217 +1,226 @@
 import { useState } from 'react';
-import './CreateEvent.module.css';
+import { useLocation } from 'react-router-dom';
+import { getFirestore, collection, addDoc, updateDoc } from 'firebase/firestore';
+import styles from './CreateEvent.module.css';
 
-function CreateEvent() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState({
-    eventType: '',
-    hasLimit: false,
-    limit: '',
-    campus: '',
-    bannedIds: '',
-    location: '',
-    description: '',
-    eventName: ''
-  });
+const CreateEvent = () => {
+  // State for form fields
+  const location = useLocation();
+  const { userData } = location.state || {};
+  const db = getFirestore();
+  
+  // Existing state declarations
+  const [eventName, setEventName] = useState('');
+  const [entryLimit, setEntryLimit] = useState('unlimited');
+  const [maxEntries, setMaxEntries] = useState('');
+  const [locations, setLocation] = useState('');
+  const [purpose, setPurpose] = useState('event');
+  const [selectedEsp32, setSelectedEsp32] = useState('');
+  const [status, setStatus] = useState('pending');
+  const [startDate, setStartDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [endTime, setEndTime] = useState('');
 
-  const campusList = [
-    'Main Campus',
-    'North Campus',
-    'South Campus',
-    'East Campus',
-    'West Campus',
-    'All Campuses'
-  ];
+  // Mock data for ESP32 devices
+  const esp32Devices = ['ESP32-001', 'ESP32-002', 'ESP32-003'];
 
-  const eventTypes = [
-    'Event Attendance',
-    'Membership',
-    'Room Attendance',
-    'Line Up Organizing'
-  ];
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      // Create the event data without the docId
+      const eventData = {
+        eventName,
+        entryLimit,
+        maxEntries: entryLimit === 'limited' ? parseInt(maxEntries) : null,
+        locations,
+        purpose,
+        selectedEsp32,
+        status,
+        startDate,
+        startTime,
+        endDate,
+        endTime,
+        creatorNfcId: userData?.currentnfcId || null,
+        createdAt: new Date().toISOString(),
+        createdBy: userData?.email || null,
+        name: userData?.name || null
+      };
 
-  const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      setIsDialogOpen(false);
-      // Handle form submission here
-      console.log('Form submitted:', formData);
+      const docRef = await addDoc(collection(db, "PendingEvent"), eventData);
+      await updateDoc(docRef, { docId: docRef.id });
+      console.log("Event created with ID: ", docRef.id);
+      alert("Event created successfully!");
+      resetForm();
+    } catch (error) {
+      console.error("Error creating event: ", error);
+      alert("Error creating event. Please try again.");
     }
   };
+  
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const resetForm = () => {
+    setEventName('');
+    setEntryLimit('unlimited');
+    setMaxEntries('');
+    setLocation('');
+    setPurpose('event');
+    setSelectedEsp32('');
+    setStatus('pending');
+    setStartDate('');
+    setStartTime('');
+    setEndDate('');
+    setEndTime('');
   };
-
-  const steps = [
-    {
-      title: "Select Event Type",
-      content: (
-        <div className="form-group">
-          <select 
-            className="select"
-            onChange={(e) => handleInputChange('eventType', e.target.value)}
-            value={formData.eventType}
-          >
-            <option value="">Select event type</option>
-            {eventTypes.map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
-      )
-    },
-    {
-      title: "Set Attendance Limit",
-      content: (
-        <div className="form-group">
-          <div className="button-group">
-            <button 
-              className="button"
-              onClick={() => handleInputChange('hasLimit', true)}
-            >
-              Has Limit
-            </button>
-            <button 
-              className="button"
-              onClick={() => handleInputChange('hasLimit', false)}
-            >
-              Limitless
-            </button>
-          </div>
-          {formData.hasLimit && (
-            <input 
-              type="number" 
-              className="input"
-              placeholder="Enter limit"
-              onChange={(e) => handleInputChange('limit', e.target.value)}
-            />
-          )}
-        </div>
-      )
-    },
-    {
-      title: "Select Campus",
-      content: (
-        <div className="form-group">
-          <select 
-            className="select"
-            onChange={(e) => handleInputChange('campus', e.target.value)}
-            value={formData.campus}
-          >
-            <option value="">Select campus</option>
-            {campusList.map((campus) => (
-              <option key={campus} value={campus}>{campus}</option>
-            ))}
-          </select>
-        </div>
-      )
-    },
-    {
-      title: "Banned IDs",
-      content: (
-        <div className="form-group">
-          <p className="helper-text">Enter banned IDs separated by /</p>
-          <input 
-            className="input"
-            placeholder="e.g. ID1/ID2/ID3"
-            onChange={(e) => handleInputChange('bannedIds', e.target.value)}
-            value={formData.bannedIds}
-          />
-        </div>
-      )
-    },
-    {
-      title: "Location",
-      content: (
-        <div className="form-group">
-          <input 
-            className="input"
-            placeholder="Enter location"
-            onChange={(e) => handleInputChange('location', e.target.value)}
-            value={formData.location}
-          />
-        </div>
-      )
-    },
-    {
-      title: "Event Details",
-      content: (
-        <div className="form-group">
-          <input 
-            className="input"
-            placeholder="Event Name"
-            onChange={(e) => handleInputChange('eventName', e.target.value)}
-            value={formData.eventName}
-            style={{ marginBottom: '10px' }}
-          />
-          <input 
-            className="input"
-            placeholder="Description"
-            onChange={(e) => handleInputChange('description', e.target.value)}
-            value={formData.description}
-          />
-        </div>
-      )
-    }
-  ];
-
-  const Summary = () => (
-    formData.eventName && (
-      <div className="summary">
-        <h2>{formData.eventName}</h2>
-        <p><strong>Location:</strong> {formData.location}</p>
-        <p><strong>Description:</strong> {formData.description}</p>
-        <p><strong>Total Records:</strong> 0</p>
-      </div>
-    )
-  );
 
   return (
-    <div className="container">
-      <Summary />
-      
-      <button 
-        className="button"
-        onClick={() => setIsDialogOpen(true)}
-      >
-        Create New Event
-      </button>
+    <div className={styles.container}>
+      <div className={styles.card}>
+        <div className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>Create New Event</h2>
+        </div>
+        
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <div className={styles.formGrid}>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Event Name</label>
+              <input 
+                type="text" 
+                className={styles.input}
+                value={eventName}
+                onChange={(e) => setEventName(e.target.value)}
+                placeholder="Enter event name" 
+              />
+            </div>
 
-      {isDialogOpen && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h3 className="modal-title">{steps[currentStep].title}</h3>
-            </div>
-            <div className="modal-content">
-              {steps[currentStep].content}
-            </div>
-            <div className="modal-footer">
-              <button 
-                className="button secondary"
-                onClick={() => currentStep === 0 ? setIsDialogOpen(false) : setCurrentStep(currentStep - 1)}
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Entry Limit</label>
+              <select 
+                className={styles.select}
+                value={entryLimit}
+                onChange={(e) => setEntryLimit(e.target.value)}
               >
-                {currentStep === 0 ? 'Cancel' : 'Back'}
-              </button>
-              <button 
-                className="button"
-                onClick={handleNext}
+                <option value="unlimited">Unlimited</option>
+                <option value="limited">Limited</option>
+              </select>
+            </div>
+
+            {entryLimit === 'limited' && (
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Maximum Entries</label>
+                <input
+                  type="number"
+                  className={styles.input}
+                  value={maxEntries}
+                  onChange={(e) => setMaxEntries(e.target.value)}
+                  placeholder="Enter maximum entries"
+                />
+              </div>
+            )}
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Location</label>
+              <input
+                type="text"
+                className={styles.input}
+                value={locations}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Enter location"
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Purpose</label>
+              <select 
+                className={styles.select}
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
               >
-                {currentStep === steps.length - 1 ? 'Finish' : 'Next'}
-              </button>
+                <option value="event">Event Attendance</option>
+                <option value="membership">Membership Attendance</option>
+                <option value="room">Room Attendance</option>
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>ESP32 Device</label>
+              <select 
+                className={styles.select}
+                value={selectedEsp32}
+                onChange={(e) => setSelectedEsp32(e.target.value)}
+              >
+                {esp32Devices.map((device) => (
+                  <option key={device} value={device}>
+                    {device}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Status</label>
+              <select 
+                className={styles.select}
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="pending">Pending</option>
+                <option value="ongoing">Ongoing</option>
+                <option value="completed">Completed</option>
+                <option value="pause">Pause</option>
+                <option value="continued">Continued</option>
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Start Date</label>
+              <input
+                type="date"
+                className={styles.input}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Start Time</label>
+              <input
+                type="time"
+                className={styles.input}
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>End Date</label>
+              <input
+                type="date"
+                className={styles.input}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>End Time</label>
+              <input
+                type="time"
+                className={styles.input}
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
             </div>
           </div>
-        </div>
-      )}
-
-      <div className="table-container">
-        <p className="placeholder-text">Attendance data will appear here</p>
+          
+          <button type="submit" className={styles.button}>
+            Create Event
+          </button>
+        </form>
       </div>
     </div>
   );
-}
+};
 
 export default CreateEvent;
