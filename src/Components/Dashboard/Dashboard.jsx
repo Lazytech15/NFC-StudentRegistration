@@ -5,6 +5,7 @@ import styles from './Dashboard.module.css';
 
 function Dashboard() {
   const location = useLocation();
+  const userData = location.state?.userData;
   const isRootPath = location.pathname === '/dashboard' || location.pathname === '/';
 
   return (
@@ -13,7 +14,7 @@ function Dashboard() {
       <main className={styles.mainContent}>
         {isRootPath ? (
           <div className={styles.welcomeContainer}>
-            <h1 className={styles.welcomeTitle}>Welcome to Your Dashboard</h1>
+            <h1 className={styles.welcomeTitle}>Welcome<br/> <span>{userData?.name}</span></h1>
             <p className={styles.welcomeText}>Select an option from the sidebar to get started</p>
           </div>
         ) : (

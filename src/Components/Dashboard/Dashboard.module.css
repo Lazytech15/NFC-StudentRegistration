@@ -33,14 +33,17 @@
   }
   
   .userInfo h3 {
-    font-weight: 500;
+    font-weight: 700;
     margin: 0;
+    font-size: 0.8em;
+    text-align: center;
   }
   
   .userInfo p {
     font-size: 0.875rem;
     color: #9ca3af;
     margin: 0;
+    text-align: center;
   }
   
   .navigation {
@@ -142,21 +145,17 @@
 
   .dashboardContainer {
     display: flex;
-    min-height: 100vh;
   }
   
   .mainContent {
     flex: 1;
     padding: 20px;
-    background-color: #f3f4f6;
-    overflow-y: auto;
   }
 
   /* welcome message */
 
   .dashboardContainer {
     display: flex;
-    min-height: 100vh;
   }
   
   .mainContent {
@@ -178,6 +177,10 @@
     font-size: 2rem;
     font-weight: bold;
     margin-bottom: 1rem;
+  }
+
+  .welcomeTitle span{
+    font-size: 0.7em;
   }
   
   .welcomeText {
@@ -219,6 +222,7 @@
   
     .sidebarOpen {
       left: 0;
+      height: 98%;
     }
   
     .hamburgerBtn {
@@ -244,5 +248,8 @@
   
     .profileSection {
       padding-top: 1rem;
+    }
+    .navLink{
+      font-size: 0.8em;
     }
   }

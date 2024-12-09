@@ -27,7 +27,7 @@ const firebaseConfig = {
   appId: "1:756223518392:web:5e8d28c78f7eefb8be764d"
 };
 
-import { getAuth } from "firebase/auth";
+import { getAuth, signOut } from "firebase/auth";
 import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
 
 // Initialize Firebase
@@ -47,10 +47,11 @@ const Sidebar = () => {
       if (user) { const email = user.email; 
         const userData = await fetchUserData(email); 
         setUserData(userData);
+        navigate('/dashboard', { state: { userData } });
       } 
     }); 
     return () => unsubscribe(); 
-  }, []); 
+  }, []);
   
   const fetchUserData = async (email) => { 
     try { 
@@ -82,10 +83,28 @@ const Sidebar = () => {
         setIsOpen(false); // Close sidebar on mobile after navigation
       }
     };
+
+    const handleDashboardClick = () => { 
+      setIsOpen(false); 
+      navigate('/dashboard', { state: { userData } }); 
+    };
   
     const toggleSidebar = () => {
       setIsOpen(!isOpen);
     };
+
+    const handleSignOut = async () => { const auth = getAuth();
+      // Initialize navigate 
+      try { 
+        await signOut(auth); 
+        console.log('User signed out successfully'); 
+        navigate('/login'); 
+        // Redirect to login page 
+        } catch (error) 
+        { 
+          console.error('Error signing out:', error);
+        } 
+      };
 
   // Mock data - replace with actual data
   const students = [
@@ -134,11 +153,11 @@ const Sidebar = () => {
       {/* Navigation Items */}
       <nav className={styles.navigation}>
       <ul className={styles.navList}>
-          <li className={styles.navItem}>
-            <Link to="/dashboard" className={styles.navLink} onClick={() => setIsOpen(false)}>
-              <LayoutDashboard size={20} />
-              <span>Dashboard</span>
-            </Link>
+          <li className={styles.navItem}> 
+            <div className={styles.navLink} onClick={handleDashboardClick}> 
+              <LayoutDashboard size={20} /> 
+              <span>Dashboard</span> 
+              </div> 
           </li>
 
           <li className={styles.navItem}>
@@ -226,7 +245,7 @@ const Sidebar = () => {
       </nav>
 
       {/* Logout Button */}
-      <button className={styles.logoutBtn}>
+      <button className={styles.logoutBtn} onClick={handleSignOut}>
         <LogOut size={20} />
         <span>Logout</span>
       </button>

@@ -63,6 +63,8 @@
   border-radius: 4px;
   font-size: 1rem;
   transition: border-color 0.2s ease;
+  font-family: var(--f2);
+  font-weight: 600;
 }
 
 .input:focus,
@@ -79,7 +81,7 @@
 }
 
 .button {
-  background-color: #2563eb;
+  background-color: var(--b-bc);
   color: white;
   padding: 10px 20px;
   border: none;
@@ -89,6 +91,8 @@
   cursor: pointer;
   transition: background-color 0.2s ease;
   width: 100%;
+  font-family: var(--f2);
+  font-weight: 800;
 }
 
 .button:hover {
