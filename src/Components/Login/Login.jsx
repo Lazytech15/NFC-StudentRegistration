@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
 
@@ -11,6 +11,15 @@ import {
   getDocs 
 } from "firebase/firestore";
 
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  GoogleAuthProvider, 
+  signInWithPopup,
+  deleteUser 
+} from "firebase/auth";
+
 const firebaseConfig = {
   apiKey: "AIzaSyC8tDVbDIrKuylsyF3rbDSSPlzsEHXqZIs",
   authDomain: "online-attendance-21f95.firebaseapp.com",
@@ -20,15 +29,6 @@ const firebaseConfig = {
   messagingSenderId: "756223518392",
   appId: "1:756223518392:web:5e8d28c78f7eefb8be764d"
 };
-
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  GoogleAuthProvider, 
-  signInWithPopup,
-  deleteUser 
-} from "firebase/auth";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -41,7 +41,100 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [nfcSupported, setNfcSupported] = useState(false);
+  const [nfcReader, setNfcReader] = useState(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if NFC is supported
+    const checkNFCSupport = async () => {
+      if ('NDEFReader' in window) {
+        try {
+          const reader = new window.NDEFReader();
+          await reader.scan();
+          setNfcSupported(true);
+          setNfcReader(reader);
+          
+          // Set up NFC reading handler
+          reader.onreading = async ({ message, serialNumber }) => {
+            try {
+              const role = await checkUserRoleByNFC(serialNumber);
+              
+              if (role) {
+                localStorage.setItem('userRole', role);
+                navigate('/dashboard');
+              } else {
+                setError('NFC card is not registered in the system.');
+              }
+            } catch (err) {
+              console.error('Error processing NFC card:', err);
+              setError('Failed to process NFC card.');
+            }
+          };
+          
+          reader.onerror = (error) => {
+            console.error('NFC read error:', error);
+            setError('Error reading NFC card.');
+          };
+          
+        } catch (err) {
+          console.error('Error setting up NFC:', err);
+          setNfcSupported(false);
+        }
+      } else {
+        setNfcSupported(false);
+      }
+    };
+
+    checkNFCSupport();
+
+    // Cleanup function
+    return () => {
+      if (nfcReader) {
+        // Clean up NFC reader if necessary
+        nfcReader.removeAllListeners?.();
+      }
+    };
+  }, []);
+
+  const checkUserRoleByNFC = async (nfcId) => {
+    try {
+      // Check in RegisteredAdmin collection
+      const adminQuery = query(
+        collection(db, "RegisteredAdmin"),
+        where("currentnfcId", "==", nfcId)
+      );
+      const adminSnapshot = await getDocs(adminQuery);
+      if (!adminSnapshot.empty) {
+        return 'admin';
+      }
+
+      // Check in RegisteredTeacher collection
+      const teacherQuery = query(
+        collection(db, "RegisteredTeacher"),
+        where("currentnfcId", "==", nfcId)
+      );
+      const teacherSnapshot = await getDocs(teacherQuery);
+      if (!teacherSnapshot.empty) {
+        return 'teacher';
+      }
+
+      // Check in RegisteredStudent collection
+      const studentQuery = query(
+        collection(db, "RegisteredStudent"),
+        where("currentnfcId", "==", nfcId)
+      );
+      const studentSnapshot = await getDocs(studentQuery);
+      if (!studentSnapshot.empty) {
+        return 'student';
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error checking user role by NFC:", error);
+      return null;
+    }
+  };
 
   const checkUserRole = async (userEmail) => {
     try {
@@ -92,7 +185,6 @@ const Login = () => {
       const role = await checkUserRole(userCredential.user.email);
       
       if (role) {
-        // Store user role in localStorage for future use
         localStorage.setItem('userRole', role);
         navigate('/dashboard');
       } else {
@@ -116,7 +208,6 @@ const Login = () => {
       const role = await checkUserRole(result.user.email);
       
       if (role) {
-        // Store user role in localStorage for future use
         localStorage.setItem('userRole', role);
         navigate('/dashboard');
       } else {
@@ -135,6 +226,12 @@ const Login = () => {
     <div className={styles.login_container}>
       <div className={styles.login_card}>
         <h1 className={styles.login_title}>Login</h1>
+        
+        {nfcSupported && (
+          <div className={styles.nfc_status}>
+            <p>NFC is enabled. Tap your card to login.</p>
+          </div>
+        )}
         
         <form onSubmit={handleEmailLogin} className={styles.login_form}>
           <div className={styles.form_group}>
