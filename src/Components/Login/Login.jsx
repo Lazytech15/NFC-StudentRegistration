@@ -55,29 +55,29 @@ const Login = () => {
           setNfcSupported(true);
           setNfcReader(reader);
           
-          // Updated NFC reading handler
           reader.onreading = async ({ message }) => {
             try {
-              // Get the NFC ID from the tag
               const nfcRecord = message.records.find(
                 record => record.recordType === "text"
               );
-  
+          
               if (!nfcRecord) {
                 throw new Error('Invalid NFC card: No user data found');
               }
-  
-              // Decode the NFC data
+          
               const nfcId = new TextDecoder().decode(nfcRecord.data);
               
-              // Use the nfcId to check user role
-              const role = await checkUserRoleByNFC(nfcId);
-              
-              if (role) {
-                localStorage.setItem('userRole', role);
-                navigate('/dashboard');
-              } else {
-                setError('NFC card is not registered in the system.');
+              try {
+                const role = await checkUserRoleByNFC(nfcId);
+                if (role) {
+                  localStorage.setItem('userRole', role);
+                  navigate('/dashboard');
+                } else {
+                  setError('NFC card is not registered in the system.');
+                }
+              } catch (authError) {
+                console.error('Authentication error:', authError);
+                setError('Failed to authenticate with NFC card.');
               }
             } catch (err) {
               console.error('Error processing NFC card:', err);
@@ -119,9 +119,11 @@ const Login = () => {
       );
       const adminSnapshot = await getDocs(adminQuery);
       if (!adminSnapshot.empty) {
+        const userData = adminSnapshot.docs[0].data();
+        await signInWithEmailAndPassword(auth, userData.email, userData.upass);
         return 'admin';
       }
-
+  
       // Check in RegisteredTeacher collection
       const teacherQuery = query(
         collection(db, "RegisteredTeacher"),
@@ -129,9 +131,11 @@ const Login = () => {
       );
       const teacherSnapshot = await getDocs(teacherQuery);
       if (!teacherSnapshot.empty) {
+        const userData = teacherSnapshot.docs[0].data();
+        await signInWithEmailAndPassword(auth, userData.email, userData.upass);
         return 'teacher';
       }
-
+  
       // Check in RegisteredStudent collection
       const studentQuery = query(
         collection(db, "RegisteredStudent"),
@@ -139,13 +143,15 @@ const Login = () => {
       );
       const studentSnapshot = await getDocs(studentQuery);
       if (!studentSnapshot.empty) {
+        const userData = studentSnapshot.docs[0].data();
+        await signInWithEmailAndPassword(auth, userData.email, userData.upass);
         return 'student';
       }
-
+  
       return null;
     } catch (error) {
       console.error("Error checking user role by NFC:", error);
-      return null;
+      throw error; // Propagate the error to handle it in the calling function
     }
   };
 
