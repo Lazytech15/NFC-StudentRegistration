@@ -95,21 +95,6 @@ const TeacherRegistration = () => {
     };
   }, [nfcReader]);
 
-  const uploadSelfie = async () => {
-    if (!selfie) return null;
-    try {
-      updateStatus('Uploading selfie...', 'info');
-      const safeEmail = formData.email.replace(/[@.]/g, '_');
-      const storageRef = ref(storage, `users/${safeEmail}/profile/${selfie.name}`);
-      const snapshot = await uploadBytes(storageRef, selfie);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      return downloadURL;
-    } catch (error) {
-      updateStatus('Failed to upload selfie: ' + error.message, 'error');
-      throw error;
-    }
-  };
-
   const handleSelfie = (e) => {
     const file = e.target.files[0];
     setSelfie(file);
@@ -130,7 +115,7 @@ const TeacherRegistration = () => {
         formData.upass
       );
       
-      await sendEmailVerification(userCredential.user);
+    //   await sendEmailVerification(userCredential.user);
       
       return userCredential.user;
     } catch (error) {
@@ -218,6 +203,21 @@ const TeacherRegistration = () => {
         firebaseUserId: firebaseUser.uid,
         createdAt: serverTimestamp()
       };
+
+      const uploadSelfie = async () => {
+        if (!selfie) return null;
+        try {
+          updateStatus('Uploading selfie...', 'info');
+          const safeEmail = formData.email.replace(/[@.]/g, '_');
+          const storageRef = ref(storage, `users/${safeEmail}/profile/${selfie.name}`);
+          const snapshot = await uploadBytes(storageRef, selfie);
+          const downloadURL = await getDownloadURL(snapshot.ref);
+          return downloadURL;
+        } catch (error) {
+          updateStatus('Failed to upload selfie: ' + error.message, 'error');
+          throw error;
+        }
+      };
   
       // Save to Firestore
       updateStatus('Saving to database...', 'info');
@@ -285,7 +285,7 @@ const TeacherRegistration = () => {
 
     try {
       await scanNfcTag();
-      
+
       if (!window.confirm('Do you want to complete the registration?')) {
         setNfcSerialNumber(null);
         return;
