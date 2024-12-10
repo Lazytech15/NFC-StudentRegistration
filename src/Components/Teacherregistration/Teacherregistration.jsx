@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
+import { useNavigate } from 'react-router-dom';
 
 import { 
   getFirestore, doc, getDoc, addDoc, 
@@ -184,6 +185,24 @@ const TeacherRegistration = () => {
     }
   };
 
+const handleSignOut = async () => {
+  const auth = getAuth();
+  const navigate = useNavigate();
+
+  try {
+    await signOut(auth);
+    console.log('User signed out successfully');
+
+    
+    setTimeout(() => {
+      navigate('/login'); 
+    }, 2000);
+  } catch (error) {
+    console.error('Error signing out:', error);
+  }
+};
+
+
   const uploadSelfie = async () => {
     if (!selfie) return null;
     try {
@@ -221,7 +240,7 @@ const TeacherRegistration = () => {
       const docRef = await addDoc(collection(db, 'RegisteredTeacher'), initialData);
       await updateDoc(docRef, { currentnfcId: docRef.id });
       updateStatus('Registration details saved successfully!', 'success');
-
+  
       // Step 3: Write to NFC
       updateStatus('Writing to NFC tag... Please keep your card in place', 'info');
       const ndef = new NDEFReader();
@@ -232,7 +251,7 @@ const TeacherRegistration = () => {
         }]
       });
       updateStatus('NFC tag written successfully!', 'success');
-
+  
       // Step 4: Create Firebase Auth account last
       updateStatus('Creating your account...', 'info');
       const firebaseUser = await registerWithFirebaseAuth();
@@ -241,12 +260,12 @@ const TeacherRegistration = () => {
       await updateDoc(docRef, { 
         firebaseUserId: firebaseUser.uid 
       });
-      
-      // Step 6: Sign out
-      await signOut(auth);
-      
+  
       // Final success message
       updateStatus('Registration completed! Please check your email for verification.', 'success');
+      
+      // Step 6: Sign out
+      await handleSignOut();
       
       // Reset form after delay
       setTimeout(() => {
@@ -275,6 +294,7 @@ const TeacherRegistration = () => {
       setIsSaving(false);
     }
   };
+  
 
   const checkNfcAuthorization = async (serialNumber) => {
     try {
