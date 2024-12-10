@@ -1,0 +1,58 @@
+.tableContainer {
+    overflow-x: auto; /* Enable horizontal scrolling */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on touch devices */
+  }
+  
+  .registeredUsersContainer {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 10px;
+  }
+  
+  .header h2 {
+    margin-left: 10px;
+    color: #333;
+  }
+  
+  .usersTable {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .usersTable thead {
+    background-color: #f1f3f5;
+  }
+  
+  .usersTable th, 
+  .usersTable td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+    text-wrap: nowrap;
+  }
+  
+  .usersTable tr:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .loadingContainer, 
+  .errorContainer,
+  .noUsersContainer {
+    text-align: center;
+    padding: 20px;
+    color: #6c757d;
+  }
+  
+  .errorContainer {
+    color: #dc3545;
+  }
+  

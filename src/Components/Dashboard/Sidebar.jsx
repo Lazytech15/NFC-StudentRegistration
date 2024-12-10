@@ -38,20 +38,68 @@ const Sidebar = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [registeredTeachers, setRegisteredTeachers] = useState([]);
+  const [registeredStudents, setRegisteredStudents] = useState([]);
+  const [ndefReader, setNdefReader] = useState(null);
   const auth = getAuth();
   const db = getFirestore();
 
   useEffect(() => { 
     const unsubscribe = auth.onAuthStateChanged(async (user) => { 
       setCurrentUser(user); 
-      if (user) { const email = user.email; 
+      if (user) { 
+        const email = user.email; 
         const userData = await fetchUserData(email); 
         setUserData(userData);
         navigate('/dashboard', { state: { userData } });
       } 
     }); 
-    return () => unsubscribe(); 
+
+    // Check and cleanup any existing NDEFReader
+    const checkAndCleanupNFC = async () => {
+      try {
+        if ('NDEFReader' in window) {
+          const existingReader = await window.NDEFReader;
+          if (existingReader) {
+            existingReader.abort();
+            console.log('Existing NFC reader cleaned up');
+          }
+        }
+      } catch (error) {
+        console.error('Error cleaning up NFC reader:', error);
+      }
+    };
+
+    checkAndCleanupNFC();
+    
+    return () => {
+      unsubscribe();
+      // Cleanup NFC reader on component unmount
+      if (ndefReader) {
+        ndefReader.abort();
+      }
+    }; 
   }, []);
+
+  useEffect(() => {
+    const fetchRegisteredUsers = async () => {
+      try {
+        // Fetch teachers
+        const teachersSnapshot = await getDocs(collection(db, "RegisteredTeacher"));
+        const teachersList = teachersSnapshot.docs.map(doc => doc.data().name).slice(0, 5);
+        setRegisteredTeachers(teachersList);
+
+        // Fetch students
+        const studentsSnapshot = await getDocs(collection(db, "RegisteredStudent"));
+        const studentsList = studentsSnapshot.docs.map(doc => doc.data().name).slice(0, 5);
+        setRegisteredStudents(studentsList);
+      } catch (error) {
+        console.error("Error fetching registered users:", error);
+      }
+    };
+
+    fetchRegisteredUsers();
+  }, [db]);
   
   const fetchUserData = async (email) => { 
     try { 
@@ -80,7 +128,7 @@ const Sidebar = () => {
     const handleCreateEventClick = () => {
       if (userData) {
         navigate('/dashboard/create-event', { state: { userData } });
-        setIsOpen(false); // Close sidebar on mobile after navigation
+        setIsOpen(false);
       }
     };
 
@@ -91,27 +139,26 @@ const Sidebar = () => {
 
     const handleFileManagerClick = () => { 
       setIsOpen(false); 
-      // logFileManagerClick(); 
-      navigate('/dashboard/file-manager', { state: { userData } 
-      }); 
+      navigate('/dashboard/file-manager', { state: { userData } }); 
     };
   
     const toggleSidebar = () => {
       setIsOpen(!isOpen);
     };
 
-    const handleSignOut = async () => { const auth = getAuth();
-      // Initialize navigate 
+    const handleSignOut = async () => {
       try { 
+        // Cleanup NFC reader before signing out
+        if (ndefReader) {
+          ndefReader.abort();
+        }
         await signOut(auth); 
         console.log('User signed out successfully'); 
         navigate('/login'); 
-        // Redirect to login page 
-        } catch (error) 
-        { 
-          console.error('Error signing out:', error);
-        } 
-      };
+      } catch (error) { 
+        console.error('Error signing out:', error);
+      } 
+    };
 
   // Mock data - replace with actual data
   const students = [
@@ -136,6 +183,9 @@ const Sidebar = () => {
     "Scanner-003"
   ];
 
+  // Check if user is a student
+  const isStudent = userData?.position === 'Student';
+
   return (
     <>
       <button className={styles.hamburgerBtn} onClick={toggleSidebar}>
@@ -143,132 +193,160 @@ const Sidebar = () => {
       </button>
 
       <div className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`}>
-      <div className={styles.profileSection}>
-        {currentUser && userData && (
-          <>
-            <div className={styles.avatar}>
-              <img src={currentUser.photoURL || userData.selfieUrl} alt="Profile" />
-            </div>
-            <div className={styles.userInfo}>
-              <h3>{userData.name}</h3>
-              <p>{currentUser.email}</p>
-              <br />
-              <span>{userData.position}</span>
-            </div>
-          </>
-        )}
-      </div>
+        <div className={styles.profileSection}>
+          {currentUser && userData && (
+            <>
+              <div className={styles.avatar}>
+                <img src={currentUser.photoURL || userData.selfieUrl} alt="Profile" />
+              </div>
+              <div className={styles.userInfo}>
+                <h3>{userData.name}</h3>
+                <p>{currentUser.email}</p>
+                <br />
+                <span>{userData.position}</span>
+              </div>
+            </>
+          )}
+        </div>
 
-
-      {/* Navigation Items */}
-      <nav className={styles.navigation}>
-      <ul className={styles.navList}>
-          <li className={styles.navItem}> 
-            <div className={styles.navLink} onClick={handleDashboardClick}> 
-              <LayoutDashboard size={20} /> 
-              <span>Dashboard</span> 
+        {/* Navigation Items */}
+        <nav className={styles.navigation}>
+          <ul className={styles.navList}>
+            <li className={styles.navItem}> 
+              <div className={styles.navLink} onClick={handleDashboardClick}> 
+                <LayoutDashboard size={20} /> 
+                <span>Dashboard</span> 
               </div> 
-          </li>
+            </li>
 
-          <li className={styles.navItem}>
-            <div onClick={handleCreateEventClick} className={styles.navLink} style={{ cursor: 'pointer' }} >
-              <Calendar size={20} />
-              <span>Create Event</span>
-            </div>
-          </li>
-
-          <Link to="/dashboard/event-list" className={styles.navLink} onClick={() => setIsOpen(false)}>
-          <ClipboardList size={20} />
-            <span>Event List</span>
-          </Link>
-
-          <li className={styles.navItem}>
-            <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
-              <Archive size={20} />
-              <span>Archive</span>
-            </a>
-          </li>
-
-          <li className={styles.navItem}>
-            <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
-              <Users size={20} />
-              <span>Registered Students</span>
-            </a>
-            <ul className={styles.dropdown}>
-              {students.map((student, index) => (
-                <li key={index} className={styles.dropdownItem}>
-                  {student}
+            {/* Archive items - shown differently for students vs non-students */}
+            {isStudent ? (
+              <>
+                <li className={styles.navItem}>
+                  <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Archive size={20} />
+                    <span>Event Attendance</span>
+                  </a>
                 </li>
-              ))}
-            </ul>
-          </li>
 
-          <li className={styles.navItem}>
-            <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
-              <Users size={20} />
-              <span>Registered Teacher</span>
-            </a>
-            <ul className={styles.dropdown}>
-              {teachers.map((teacher, index) => (
-                <li key={index} className={styles.dropdownItem}>
-                  {teacher}
+                <li className={styles.navItem}>
+                  <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Archive size={20} />
+                    <span>Room Attendance</span>
+                  </a>
                 </li>
-              ))}
-            </ul>
-          </li>
 
-          <li className={styles.navItem}>
-            <Link to="/dashboard/teacher-registration" className={styles.navLink} onClick={() => setIsOpen(false)}>
-              <Users size={20} />
-              <span>Teacher Registration</span>
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link to="/dashboard/student-registration" className={styles.navLink} onClick={() => setIsOpen(false)}>
-              <Users size={20} />
-              <span>Student Registration</span>
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link to="/dashboard/nfc-reader" className={styles.navLink} onClick={() => setIsOpen(false)}>
-              <Cpu size={20} />
-              <span>NFC Reader</span>
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
-              <Cpu size={20} />
-              <span>ESP32 NFC Scanners</span>
-            </a>
-            <ul className={styles.dropdown}>
-              {scanners.map((scanner, index) => (
-                <li key={index} className={styles.dropdownItem}>
-                  {scanner}
+                <li className={styles.navItem}>
+                  <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Archive size={20} />
+                    <span>Membership Attendance</span>
+                  </a>
                 </li>
-              ))}
-            </ul>
-          </li>
+              </>
+            ) : (
+              <li className={styles.navItem}>
+                <div onClick={handleCreateEventClick} className={styles.navLink} style={{ cursor: 'pointer' }}>
+                  <Calendar size={20} />
+                  <span>Create Event</span>
+                </div>
+              </li>
+            )}
 
-          <li className={styles.navItem}> 
+            {!isStudent && (
+              <>
+                <Link to="/dashboard/event-list" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                  <ClipboardList size={20} />
+                  <span>Event List</span>
+                </Link>
+
+                <li className={styles.navItem}>
+                <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                  <Archive size={20} />
+                  <span>Archive</span>
+                </a>
+                </li>
+
+                <li className={styles.navItem}>
+                  <Link to="/dashboard/registered-students" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Users size={20} />
+                    <span>Registered Students</span>
+                  </Link>
+                  <ul className={styles.dropdown}>
+                    {registeredStudents.map((student, index) => (
+                      <li key={index} className={styles.dropdownItem}>
+                        {student}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+
+                <li className={styles.navItem}>
+                  <Link to="/dashboard/registered-teachers" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Users size={20} />
+                    <span>Registered Teacher</span>
+                  </Link>
+                  <ul className={styles.dropdown}>
+                    {registeredTeachers.map((teacher, index) => (
+                      <li key={index} className={styles.dropdownItem}>
+                        {teacher}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+
+                <li className={styles.navItem}>
+                  <Link to="/dashboard/teacher-registration" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Users size={20} />
+                    <span>Teacher Registration</span>
+                  </Link>
+                </li>
+
+                <li className={styles.navItem}>
+                  <Link to="/dashboard/student-registration" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Users size={20} />
+                    <span>Student Registration</span>
+                  </Link>
+                </li>
+
+                <li className={styles.navItem}>
+                  <Link to="/dashboard/nfc-reader" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Cpu size={20} />
+                    <span>NFC Reader</span>
+                  </Link>
+                </li>
+
+                <li className={styles.navItem}>
+                  <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Cpu size={20} />
+                    <span>ESP32 NFC Scanners</span>
+                  </a>
+                  <ul className={styles.dropdown}>
+                    {scanners.map((scanner, index) => (
+                      <li key={index} className={styles.dropdownItem}>
+                        {scanner}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              </>
+            )}
+
+            <li className={styles.navItem}> 
               <div className={styles.navLink} onClick={handleFileManagerClick}> 
                 <FolderOpen size={20} /> 
                 <span>File Manager</span> 
               </div> 
             </li>
+          </ul>
+        </nav>
 
-        </ul>
-      </nav>
-
-      {/* Logout Button */}
-      <button className={styles.logoutBtn} onClick={handleSignOut}>
-        <LogOut size={20} />
-        <span>Logout</span>
-      </button>
-    </div>
-    {isOpen && <div className={styles.overlay} onClick={toggleSidebar} />}
+        {/* Logout Button */}
+        <button className={styles.logoutBtn} onClick={handleSignOut}>
+          <LogOut size={20} />
+          <span>Logout</span>
+        </button>
+      </div>
+      {isOpen && <div className={styles.overlay} onClick={toggleSidebar} />}
     </>
   );
 };

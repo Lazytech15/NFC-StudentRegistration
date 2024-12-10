@@ -8,6 +8,8 @@ import Login from './Components/Login/Login.jsx';
 import EventList from './Components/Eventlist/Eventlist.jsx';
 import FileManager from './Components/Filemanager/Filemanager.jsx';
 import TeacherRegistration from './Components/Teacherregistration/Teacherregistration.jsx';
+import RegisteredTeachers from './Components/RegisteredTeacher/Registeredteacher.jsx';
+import RegisteredStudents from './Components/RegisteredStudent/RegisteredStudent.jsx';
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard/*" element={<Dashboard />}>
           <Route path="create-event" element={<CreateEvent />} />
+          <Route path="registered-teachers" element={<RegisteredTeachers />} />
+          <Route path="registered-students" element={<RegisteredStudents />} />
           <Route path="teacher-registration" element={<TeacherRegistration />} />
           <Route path="student-registration" element={<StudentRegistration />} />
           <Route path="nfc-reader" element={<NFCReader />} />
@@ -30,3 +34,4 @@ function App() {
 }
 
 export default App;
+

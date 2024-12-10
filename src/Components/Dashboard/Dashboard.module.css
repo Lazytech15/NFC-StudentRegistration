@@ -118,6 +118,9 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     display: none;
   }
+  .dropdown li{
+    list-style: none;
+  }
   
   .navItem:hover .dropdown {
     display: block;
