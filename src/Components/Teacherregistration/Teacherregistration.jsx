@@ -276,6 +276,33 @@ const TeacherRegistration = () => {
     }
   };
 
+  const checkNfcAuthorization = async (serialNumber) => {
+    try {
+      const docRef = doc(db, 'Toregistered', serialNumber);
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists();
+    } catch (error) {
+      console.error('NFC Authorization Check Error:', error);
+      return false;
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      campus: '',
+      teacherId: '',
+      upass: ''
+    });
+    setSelfie(null);
+    setStatus('');
+    setNfcSerialNumber(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
