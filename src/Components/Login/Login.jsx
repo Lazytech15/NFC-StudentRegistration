@@ -58,7 +58,7 @@ const Login = () => {
           // Set up NFC reading handler
           reader.onreading = async ({ message, serialNumber }) => {
             try {
-              const role = await checkUserRoleByNFC(serialNumber);
+              const role = await checkUserRoleByNFC(message);
               
               if (role) {
                 localStorage.setItem('userRole', role);
