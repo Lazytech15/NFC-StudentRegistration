@@ -115,7 +115,7 @@ const TeacherRegistration = () => {
         formData.upass
       );
       
-    //   await sendEmailVerification(userCredential.user);
+      await sendEmailVerification(userCredential.user);
       
       return userCredential.user;
     } catch (error) {
@@ -184,6 +184,21 @@ const TeacherRegistration = () => {
     }
   };
 
+  const uploadSelfie = async () => {
+    if (!selfie) return null;
+    try {
+      updateStatus('Uploading selfie...', 'info');
+      const safeEmail = formData.email.replace(/[@.]/g, '_');
+      const storageRef = ref(storage, `users/${safeEmail}/profile/${selfie.name}`);
+      const snapshot = await uploadBytes(storageRef, selfie);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      return downloadURL;
+    } catch (error) {
+      updateStatus('Failed to upload selfie: ' + error.message, 'error');
+      throw error;
+    }
+  };
+
   const completeRegistration = async () => {
     try {
       setIsSaving(true);
@@ -202,21 +217,6 @@ const TeacherRegistration = () => {
         position,
         firebaseUserId: firebaseUser.uid,
         createdAt: serverTimestamp()
-      };
-
-      const uploadSelfie = async () => {
-        if (!selfie) return null;
-        try {
-          updateStatus('Uploading selfie...', 'info');
-          const safeEmail = formData.email.replace(/[@.]/g, '_');
-          const storageRef = ref(storage, `users/${safeEmail}/profile/${selfie.name}`);
-          const snapshot = await uploadBytes(storageRef, selfie);
-          const downloadURL = await getDownloadURL(snapshot.ref);
-          return downloadURL;
-        } catch (error) {
-          updateStatus('Failed to upload selfie: ' + error.message, 'error');
-          throw error;
-        }
       };
   
       // Save to Firestore
