@@ -212,6 +212,9 @@ const TeacherRegistration = () => {
   
       // Update the document with its own ID
       await updateDoc(docRef, { currentNfcId: docRef.id });
+
+      setStatus('Verifying NFC write...');
+      await verifyNfcWrite(docRef.id, ndef);
   
       // Write to NFC tag
       setStatus('Writing to NFC tag...');
@@ -455,6 +458,7 @@ const TeacherRegistration = () => {
               type="button" 
               onClick={() => setSelfie(null)}
               className={styles.clearImageButton}
+              disabled={isSaving}
             >
               Clear
             </button>
