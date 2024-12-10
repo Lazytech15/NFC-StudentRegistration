@@ -192,6 +192,7 @@ const TeacherRegistration = () => {
       const storageRef = ref(storage, `users/${safeEmail}/profile/${selfie.name}`);
       const snapshot = await uploadBytes(storageRef, selfie);
       const downloadURL = await getDownloadURL(snapshot.ref);
+      updateStatus('Selfie uploaded successfully!', 'success');
       return downloadURL;
     } catch (error) {
       updateStatus('Failed to upload selfie: ' + error.message, 'error');
@@ -202,34 +203,27 @@ const TeacherRegistration = () => {
   const completeRegistration = async () => {
     try {
       setIsSaving(true);
-      updateStatus('Authenticating user...', 'info');
       
-      // Register user with Firebase Authentication
-      const firebaseUser = await registerWithFirebaseAuth();
-      
-      // Upload selfie
+      // Step 1: Upload selfie first
       const selfieUrl = await uploadSelfie();
+      
+      // Step 2: Save initial data to Firestore
+      updateStatus('Saving your registration details...', 'info');
       const position = "Teacher";
-      const registrationData = {
+      const initialData = {
         ...formData,
         nfcSerialNumber,
         selfieUrl,
         position,
-        firebaseUserId: firebaseUser.uid,
         createdAt: serverTimestamp()
       };
   
-      // Save to Firestore
-      updateStatus('Saving to database...', 'info');
-      const docRef = await addDoc(collection(db, 'RegisteredTeacher'), registrationData);
-  
-      // Update the document with its own ID
+      const docRef = await addDoc(collection(db, 'RegisteredTeacher'), initialData);
       await updateDoc(docRef, { currentnfcId: docRef.id });
+      updateStatus('Registration details saved successfully!', 'success');
 
-      // Sign out immediately after registration
-      await signOut(auth);
-
-      updateStatus('Writing to NFC tag...', 'info');
+      // Step 3: Write to NFC
+      updateStatus('Writing to NFC tag... Please keep your card in place', 'info');
       const ndef = new NDEFReader();
       await ndef.write({
         records: [{
@@ -237,41 +231,48 @@ const TeacherRegistration = () => {
           data: new TextEncoder().encode(docRef.id)
         }]
       });
+      updateStatus('NFC tag written successfully!', 'success');
+
+      // Step 4: Create Firebase Auth account last
+      updateStatus('Creating your account...', 'info');
+      const firebaseUser = await registerWithFirebaseAuth();
+      
+      // Step 5: Update Firestore document with Firebase UID
+      await updateDoc(docRef, { 
+        firebaseUserId: firebaseUser.uid 
+      });
+      
+      // Step 6: Sign out
+      await signOut(auth);
+      
+      // Final success message
+      updateStatus('Registration completed! Please check your email for verification.', 'success');
+      
+      // Reset form after delay
+      setTimeout(() => {
+        updateStatus('');
+        resetForm();
+      }, 5000);
   
       return docRef.id;
     } catch (error) {
       console.error('Registration Error:', error);
-      updateStatus(`Registration failed: ${error.message}`, 'error');
+      let errorMessage = 'Registration failed: ';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please use a different email.';
+      } else if (error.code === 'not-found') {
+        errorMessage = 'NFC tag not found. Please try again.';
+      } else if (error.code === 'network-error') {
+        errorMessage = 'Network connection issue. Please check your internet connection.';
+      } else {
+        errorMessage += error.message;
+      }
+      
+      updateStatus(errorMessage, 'error');
       throw error;
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const checkNfcAuthorization = async (serialNumber) => {
-    try {
-      const docRef = doc(db, 'Toregistered', serialNumber);
-      const docSnap = await getDoc(docRef);
-      return docSnap.exists();
-    } catch (error) {
-      console.error('NFC Authorization Check Error:', error);
-      return false;
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      email: '',
-      campus: '',
-      teacherId: '',
-      upass: ''
-    });
-    setSelfie(null);
-    setStatus('');
-    setNfcSerialNumber(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
     }
   };
 
@@ -284,23 +285,20 @@ const TeacherRegistration = () => {
     }
 
     try {
+      updateStatus('Waiting for NFC tag... Please place your card', 'info');
       await scanNfcTag();
+      updateStatus('NFC tag detected successfully!', 'success');
 
       if (!window.confirm('Do you want to complete the registration?')) {
         setNfcSerialNumber(null);
+        updateStatus('');
         return;
       }
 
-      // Then complete registration
-      const docId = await completeRegistration();
-      updateStatus('Registration completed successfully! Please check your email for verification.', 'success');
-      
-      setTimeout(() => {
-        updateStatus('');
-        resetForm();
-      }, 5000);
+      await completeRegistration();
     } catch (error) {
       console.error('Registration Error:', error);
+      updateStatus('Registration process failed: ' + error.message, 'error');
     }
   };
 
