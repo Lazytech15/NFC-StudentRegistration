@@ -16,4 +16,12 @@
 
     /* button */
     --b-bc: #4f46e5;
+    --b-bch:rgb(92, 84, 247);
+
+    /* font size */
+    --f-ss:0.7em;
+    --f-s:0.9em;
+    --f-ms:1.1em;
+    --f-m:1.3em;
+    --f-l:1.5em;
   }

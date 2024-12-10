@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getFirestore, collection, addDoc, updateDoc } from 'firebase/firestore';
 import styles from './CreateEvent.module.css';
+import Buttons from '../Button/Button.module.css';
 
 const CreateEvent = () => {
   // State for form fields
@@ -214,7 +215,7 @@ const CreateEvent = () => {
             </div>
           </div>
           
-          <button type="submit" className={styles.button}>
+          <button type="submit" className={Buttons.buttons}>
             Create Event
           </button>
         </form>

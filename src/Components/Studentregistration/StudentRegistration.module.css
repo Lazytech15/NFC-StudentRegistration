@@ -16,9 +16,12 @@
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
+    font-family: var(--f2);
+    font-size: var( --f-s);
+    font-weight: 600;
   }
   
-  .nfcButton, .scanButton, .selfieButton, .submitButton {
+  .nfcButton, .scanButton {
     padding: 10px;
     background-color: #4CAF50;
     color: white;
@@ -26,11 +29,7 @@
     border-radius: 4px;
     cursor: pointer;
   }
-  
-  .submitButton:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-  }
+
   .scannerContainer {
     width: 100%;
     max-width: 500px;
@@ -148,4 +147,19 @@
   .reader {
     width: 100%;
     margin: 1rem 0;
+  }
+
+  @media (max-width: 390px) {
+    .container h1{
+      font-size: var(--f-s);
+    }
+    .form input, select{
+      font-size: var(--f-ss);
+    }
+    .statusWarning,.status,.statusError,.statusInfo,.statusSuccess{
+      font-size: var(--f-ss);
+    }
+    .modalContent{
+      padding: 0.3em 1em;
+    }
   }

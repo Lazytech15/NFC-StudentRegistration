@@ -130,3 +130,27 @@
       font-size: 0.9rem;
     }
   }
+
+  @media (max-width: 390px) {
+    .event_list_container h2{
+      font-size: var(--f-m);
+    }
+    .card_header{
+      margin-bottom: 0;
+    }
+    .card_basic_info h3{
+      font-size: var(--f-ms);
+    }
+    .card_basic_info p{
+      font-size: var(--f-ss);
+    }
+    .event_info{
+      margin-bottom: 0;
+    }
+    .event_info p{
+      font-size: var(--f-s);
+    }
+    th, td{
+      font-size: var(--f-ss);
+    }
+  }

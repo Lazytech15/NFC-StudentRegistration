@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import styles from './NFCReader.module.css';
+import Buttons from '../Button/Button.module.css';
 
 const firebaseConfig = {
     apiKey: "AIzaSyC8tDVbDIrKuylsyF3rbDSSPlzsEHXqZIs",
@@ -23,10 +24,10 @@ const NFCReader = () => {
   const [error, setError] = useState(null);
 
   const startNFCRead = async () => {
-    if (!('NDEFReader' in window)) {
-      setError('NFC is not supported on this device');
-      return;
-    }
+    // if (!('NDEFReader' in window)) {
+    //   setError('NFC is not supported on this device');
+    //   return;
+    // }
 
     try {
       setIsReading(true);
@@ -140,7 +141,7 @@ const NFCReader = () => {
         <button
           onClick={startNFCRead}
           disabled={isReading || !('NDEFReader' in window)}
-          className={`${styles.button} ${styles.readButton}`}
+          className={`${Buttons.buttons} ${Buttons.buttons}`}
         >
           {isReading ? 'Reading...' : 'Scan NFC Card'}
         </button>
@@ -148,7 +149,7 @@ const NFCReader = () => {
         {studentData && (
           <button
             onClick={resetReader}
-            className={`${styles.button} ${styles.resetButton}`}
+            className={`${Buttons.buttons} ${Buttons.buttons}`}
           >
             Clear & Scan New Card
           </button>

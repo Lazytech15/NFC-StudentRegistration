@@ -6,6 +6,7 @@ import StudentRegistration from './Components/Studentregistration/StudentRegistr
 import NFCReader from './Components/NFC-Reader/Nfcreader';
 import Login from './Components/Login/Login.jsx';
 import EventList from './Components/Eventlist/Eventlist.jsx';
+import FileManager from './Components/Filemanager/Filemanager.jsx';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="student-registration" element={<StudentRegistration />} />
           <Route path="nfc-reader" element={<NFCReader />} />
           <Route path="event-list" element={<EventList />} />
+          <Route path="file-manager" element={<FileManager />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

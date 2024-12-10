@@ -8,6 +8,7 @@ import {
   getStorage, ref, uploadBytes, getDownloadURL 
 } from 'firebase/storage';
 import styles from './StudentRegistration.module.css';
+import Buttons from '../Button/Button.module.css';
 
 const firebaseConfig = {
     apiKey: "AIzaSyC8tDVbDIrKuylsyF3rbDSSPlzsEHXqZIs",
@@ -336,10 +337,10 @@ const StudentRegistration = () => {
             <button 
               type="button"
               onClick={() => fileInputRef.current.click()}
-              className={styles.selfieButton}
+              className={Buttons.buttons}
               disabled={isSaving}
             >
-              Take Selfie
+              Take Profile Picture
             </button>
           </>
         ) : (
@@ -348,7 +349,7 @@ const StudentRegistration = () => {
         
         <button 
           type="submit"
-          className={`${styles.submitButton} ${isSaving ? 'animate-pulse' : ''}`}
+          className={`${Buttons.buttons} ${isSaving ? 'animate-pulse' : ''}`}
           disabled={!formData.studentId || !selfie || isSaving || !('NDEFReader' in window)}
         >
           {isSaving ? 'Processing...' : 'Complete Registration with NFC'}

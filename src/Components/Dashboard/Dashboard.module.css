@@ -137,6 +137,8 @@
     width: 100%;
     margin-top: auto;
     transition: background-color 0.2s;
+    font-family: var(--f2);
+    font-weight: 800;
   }
   
   .logoutBtn:hover {
@@ -254,5 +256,30 @@
     }
     .navLink{
       font-size: 0.8em;
+    }
+  }
+
+  @media (max-width: 390px) {
+    .userInfo{
+      font-size: var(--f-s);
+    }
+    .userInfo p{
+      font-size: var(--f-ss);
+    }
+    .navLink{
+      padding: 0.3em;
+      font-size: var(--f-ss);
+    }
+    .welcomeTitle{
+      font-size: var(--f-l);
+    }
+    .welcomeTitle span{
+      font-size: var(--f-ss);
+    }
+    .welcomeText{
+      font-size: var(--f-ss);
+    }
+    .logoutBtn span{
+      font-size: var(--f-s);
     }
   }

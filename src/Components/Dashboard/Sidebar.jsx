@@ -88,6 +88,13 @@ const Sidebar = () => {
       setIsOpen(false); 
       navigate('/dashboard', { state: { userData } }); 
     };
+
+    const handleFileManagerClick = () => { 
+      setIsOpen(false); 
+      // logFileManagerClick(); 
+      navigate('/dashboard/file-manager', { state: { userData } 
+      }); 
+    };
   
     const toggleSidebar = () => {
       setIsOpen(!isOpen);
@@ -235,12 +242,13 @@ const Sidebar = () => {
             </ul>
           </li>
 
-          <li className={styles.navItem}>
-            <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
-              <FolderOpen size={20} />
-              <span>File Manager</span>
-            </a>
-          </li>
+          <li className={styles.navItem}> 
+              <div className={styles.navLink} onClick={handleFileManagerClick}> 
+                <FolderOpen size={20} /> 
+                <span>File Manager</span> 
+              </div> 
+            </li>
+
         </ul>
       </nav>
 

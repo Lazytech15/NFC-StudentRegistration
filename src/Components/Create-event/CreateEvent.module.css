@@ -171,3 +171,17 @@
 .inputError:focus {
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1);
 }
+
+@media (max-width: 390px) {
+  .cardTitle{
+    font-size: var(--f-ms);
+  }
+  .label{
+    font-size: var(--f-s);
+    font-weight: 500;
+  }
+  .input,.select{
+    padding: 0.3em;
+    font-size: var(--f-ss);
+  }
+}
