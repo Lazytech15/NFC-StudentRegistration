@@ -143,19 +143,22 @@ const Sidebar = () => {
       </button>
 
       <div className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`}>
-        <div className={styles.profileSection}>
-          {currentUser && userData && (
-            <>
-              <div className={styles.avatar}>
-                <img src={currentUser.photoURL} alt="Profile" />
-              </div>
-              <div className={styles.userInfo}>
-                <h3>{userData.name}</h3>
-                <p>{currentUser.email}</p>
-              </div>
-            </>
-          )}
-        </div>
+      <div className={styles.profileSection}>
+        {currentUser && userData && (
+          <>
+            <div className={styles.avatar}>
+              <img src={currentUser.photoURL || userData.selfieUrl} alt="Profile" />
+            </div>
+            <div className={styles.userInfo}>
+              <h3>{userData.name}</h3>
+              <p>{currentUser.email}</p>
+              <br />
+              <span>{userData.position}</span>
+            </div>
+          </>
+        )}
+      </div>
+
 
       {/* Navigation Items */}
       <nav className={styles.navigation}>
@@ -189,7 +192,7 @@ const Sidebar = () => {
           <li className={styles.navItem}>
             <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
               <Users size={20} />
-              <span>Students Registered</span>
+              <span>Registered Students</span>
             </a>
             <ul className={styles.dropdown}>
               {students.map((student, index) => (
@@ -203,7 +206,7 @@ const Sidebar = () => {
           <li className={styles.navItem}>
             <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
               <Users size={20} />
-              <span>Teacher Registered</span>
+              <span>Registered Teacher</span>
             </a>
             <ul className={styles.dropdown}>
               {teachers.map((teacher, index) => (
@@ -212,6 +215,13 @@ const Sidebar = () => {
                 </li>
               ))}
             </ul>
+          </li>
+
+          <li className={styles.navItem}>
+            <Link to="/dashboard/teacher-registration" className={styles.navLink} onClick={() => setIsOpen(false)}>
+              <Users size={20} />
+              <span>Teacher Registration</span>
+            </Link>
           </li>
 
           <li className={styles.navItem}>

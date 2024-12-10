@@ -45,6 +45,16 @@
     margin: 0;
     text-align: center;
   }
+
+  .userInfo span{
+    display: flex;
+    align-items: center;
+    font-size: var(--f-m);
+    font-weight: 700;
+    text-align: center;
+    width: 100%;
+    justify-content: center;
+  }
   
   .navigation {
     flex: 1;

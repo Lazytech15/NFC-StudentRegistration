@@ -7,7 +7,7 @@ import {
 import { 
   getStorage, ref, uploadBytes, getDownloadURL 
 } from 'firebase/storage';
-import styles from './StudentRegistration.module.css';
+import styles from './teacherregistration.module.css';
 import Buttons from '../Button/Button.module.css';
 
 const firebaseConfig = {
@@ -51,7 +51,7 @@ const StatusModal = ({ message, type, isProcessing }) => {
   );
 };
 
-const StudentRegistration = () => {
+const TeacherRegistration = () => {
   const [formData, setFormData] = useState({
     studentName: '',
     email: '',
@@ -60,12 +60,14 @@ const StudentRegistration = () => {
     studentId: '',
   });
   const [selfie, setSelfie] = useState(null);
+  const [uploadOption, setUploadOption] = useState('capture'); // New state to track upload method
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [nfcReader, setNfcReader] = useState(null);
   const [statusType, setStatusType] = useState('info');
   
   const fileInputRef = useRef(null);
+  const existingImageInputRef = useRef(null);
 
   const updateStatus = (message, type = 'info') => {
     setStatus(message);
@@ -84,6 +86,14 @@ const StudentRegistration = () => {
   const handleSelfie = (e) => {
     const file = e.target.files[0];
     setSelfie(file);
+  };
+
+  const handleUploadOptionChange = (option) => {
+    setUploadOption(option);
+    setSelfie(null);
+    // Reset file inputs
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (existingImageInputRef.current) existingImageInputRef.current.value = '';
   };
 
   const uploadSelfie = async () => {
@@ -121,7 +131,7 @@ const StudentRegistration = () => {
 
             setStatus('Uploading data...');
             const selfieUrl = await uploadSelfie();
-            const position = "Student"
+            const position ="Teacher";
             const registrationData = {
               ...formData,
               nfcSerialNumber: serialNumber,
@@ -131,7 +141,7 @@ const StudentRegistration = () => {
             };
 
             setStatus('Saving to database...');
-            const docRef = await addDoc(collection(db, 'RegisteredStudent'), registrationData);
+            const docRef = await addDoc(collection(db, 'RegisteredTeacher'), registrationData);
 
             setStatus('Writing to NFC tag...');
             try {
@@ -232,10 +242,10 @@ const StudentRegistration = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!('NDEFReader' in window)) {
-      updateStatus('NFC is not supported on this device', 'warning');
-      return;
-    }
+    // if (!('NDEFReader' in window)) {
+    //   updateStatus('NFC is not supported on this device', 'warning');
+    //   return;
+    // }
 
     if (!window.confirm('Approach NFC tag to complete registration')) return;
 
@@ -260,16 +270,16 @@ const StudentRegistration = () => {
 
   return (
     <div className={styles.container}>
-      <h1>Student Registration</h1>
+      <h1>Teacher Registration</h1>
       
       {/* Status Modal */}
-      {(!('NDEFReader' in window) || status) && (
+      {/* {(!('NDEFReader' in window) || status) && (
         <StatusModal 
           message={!('NDEFReader' in window) ? 'NFC is not supported on this device' : status}
           type={!('NDEFReader' in window) ? 'warning' : statusType}
           isProcessing={isSaving}
         />
-      )}
+      )} */}
       
       <form onSubmit={handleSubmit} className={styles.form}>
         <input
@@ -324,8 +334,34 @@ const StudentRegistration = () => {
           <option value="Angono Campus">Angono Campus</option>
           <option value="Cogeo Campus">Cogeo Campus</option>
         </select>
+
+        <div className={styles.uploadOptionContainer}>
+          <label>
+            <input
+              type="radio"
+              name="uploadOption"
+              value="capture"
+              checked={uploadOption === 'capture'}
+              onChange={() => handleUploadOptionChange('capture')}
+              disabled={isSaving}
+            />
+            Capture Selfie
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="uploadOption"
+              value="upload"
+              checked={uploadOption === 'upload'}
+              onChange={() => handleUploadOptionChange('upload')}
+              disabled={isSaving}
+            />
+            Upload Existing Image
+          </label>
+        </div>
         
-        {!selfie ? (
+        {/* Conditional rendering based on upload option */}
+        {uploadOption === 'capture' ? (
           <>
             <input 
               type="file"
@@ -346,7 +382,38 @@ const StudentRegistration = () => {
             </button>
           </>
         ) : (
-          <p>Selfie Captured: {selfie.name}</p>
+          <>
+            <input 
+              type="file"
+              ref={existingImageInputRef}
+              onChange={handleSelfie}
+              accept="image/*"
+              style={{display: 'none'}}
+              disabled={isSaving}
+            />
+            <button 
+              type="button"
+              onClick={() => existingImageInputRef.current.click()}
+              className={Buttons.buttons}
+              disabled={isSaving}
+            >
+              Upload Existing Image
+            </button>
+          </>
+        )}
+        
+        {/* Show selected image name if image is selected */}
+        {selfie && (
+          <p>
+            Selected Image: {selfie.name} 
+            <button 
+              type="button" 
+              onClick={() => setSelfie(null)}
+              className={styles.clearImageButton}
+            >
+              Clear
+            </button>
+          </p>
         )}
         
         <button 
@@ -361,4 +428,4 @@ const StudentRegistration = () => {
   );
 };
 
-export default StudentRegistration;
+export default TeacherRegistration;
