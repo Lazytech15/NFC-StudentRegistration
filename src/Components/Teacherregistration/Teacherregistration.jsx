@@ -13,7 +13,8 @@ import {
 import { 
     getAuth, 
     createUserWithEmailAndPassword, 
-    sendEmailVerification 
+    sendEmailVerification,
+    signOut
   } from 'firebase/auth';
 
 import styles from './teacherregistration.module.css';
@@ -94,6 +95,21 @@ const TeacherRegistration = () => {
     };
   }, [nfcReader]);
 
+  const uploadSelfie = async () => {
+    if (!selfie) return null;
+    try {
+      updateStatus('Uploading selfie...', 'info');
+      const safeEmail = formData.email.replace(/[@.]/g, '_');
+      const storageRef = ref(storage, `users/${safeEmail}/profile/${selfie.name}`);
+      const snapshot = await uploadBytes(storageRef, selfie);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      return downloadURL;
+    } catch (error) {
+      updateStatus('Failed to upload selfie: ' + error.message, 'error');
+      throw error;
+    }
+  };
+
   const handleSelfie = (e) => {
     const file = e.target.files[0];
     setSelfie(file);
@@ -104,15 +120,6 @@ const TeacherRegistration = () => {
     setSelfie(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (existingImageInputRef.current) existingImageInputRef.current.value = '';
-  };
-
-  const uploadSelfie = async () => {
-    if (!selfie) return null;
-    setStatus('Uploading selfie...');
-    const safeEmail = formData.email.replace(/[@.]/g, '_');
-    const storageRef = ref(storage, `users/${safeEmail}/profile/${selfie.name}`);
-    const snapshot = await uploadBytes(storageRef, selfie);
-    return await getDownloadURL(snapshot.ref);
   };
 
   const registerWithFirebaseAuth = async () => {
@@ -195,7 +202,7 @@ const TeacherRegistration = () => {
   const completeRegistration = async () => {
     try {
       setIsSaving(true);
-      setStatus('Authenticating user...');
+      updateStatus('Authenticating user...', 'info');
       
       // Register user with Firebase Authentication
       const firebaseUser = await registerWithFirebaseAuth();
@@ -206,7 +213,6 @@ const TeacherRegistration = () => {
       const registrationData = {
         ...formData,
         nfcSerialNumber,
-        currentnfcId: '',
         selfieUrl,
         position,
         firebaseUserId: firebaseUser.uid,
@@ -214,13 +220,16 @@ const TeacherRegistration = () => {
       };
   
       // Save to Firestore
-      setStatus('Saving to database...');
+      updateStatus('Saving to database...', 'info');
       const docRef = await addDoc(collection(db, 'RegisteredTeacher'), registrationData);
   
       // Update the document with its own ID
-      await updateDoc(docRef, { currentNfcId: docRef.id });
+      await updateDoc(docRef, { currentnfcId: docRef.id });
 
-      setStatus('Writing to NFC tag...');
+      // Sign out immediately after registration
+      await signOut(auth);
+
+      updateStatus('Writing to NFC tag...', 'info');
       const ndef = new NDEFReader();
       await ndef.write({
         records: [{
@@ -231,7 +240,8 @@ const TeacherRegistration = () => {
   
       return docRef.id;
     } catch (error) {
-      updateStatus(error.message, 'error');
+      console.error('Registration Error:', error);
+      updateStatus(`Registration failed: ${error.message}`, 'error');
       throw error;
     } finally {
       setIsSaving(false);
@@ -274,10 +284,8 @@ const TeacherRegistration = () => {
     }
 
     try {
-      // First, scan NFC tag
       await scanNfcTag();
-
-      // Confirm before proceeding
+      
       if (!window.confirm('Do you want to complete the registration?')) {
         setNfcSerialNumber(null);
         return;
@@ -293,7 +301,6 @@ const TeacherRegistration = () => {
       }, 5000);
     } catch (error) {
       console.error('Registration Error:', error);
-      updateStatus(`Registration failed: ${error.message}`, 'error');
     }
   };
 
