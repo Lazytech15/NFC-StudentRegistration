@@ -175,7 +175,7 @@ const TeacherRegistration = () => {
 
             setStatus('Uploading data...');
             const selfieUrl = await uploadSelfie();
-            const position = "Teacher";
+            const position = "Student";
             const registrationData = {
               ...formData,
               nfcSerialNumber: serialNumber,
