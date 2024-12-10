@@ -55,10 +55,23 @@ const Login = () => {
           setNfcSupported(true);
           setNfcReader(reader);
           
-          // Set up NFC reading handler
-          reader.onreading = async ({ message, serialNumber }) => {
+          // Updated NFC reading handler
+          reader.onreading = async ({ message }) => {
             try {
-              const role = await checkUserRoleByNFC(message);
+              // Get the NFC ID from the tag
+              const nfcRecord = message.records.find(
+                record => record.recordType === "text"
+              );
+  
+              if (!nfcRecord) {
+                throw new Error('Invalid NFC card: No user data found');
+              }
+  
+              // Decode the NFC data
+              const nfcId = new TextDecoder().decode(nfcRecord.data);
+              
+              // Use the nfcId to check user role
+              const role = await checkUserRoleByNFC(nfcId);
               
               if (role) {
                 localStorage.setItem('userRole', role);
@@ -85,9 +98,9 @@ const Login = () => {
         setNfcSupported(false);
       }
     };
-
+  
     checkNFCSupport();
-
+  
     // Cleanup function
     return () => {
       if (nfcReader) {
