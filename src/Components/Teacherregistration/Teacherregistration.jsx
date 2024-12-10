@@ -1,12 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
+
 import { 
   getFirestore, doc, getDoc, addDoc, 
   collection, serverTimestamp 
 } from 'firebase/firestore';
+
 import { 
   getStorage, ref, uploadBytes, getDownloadURL 
 } from 'firebase/storage';
+
+import { 
+    getAuth, 
+    createUserWithEmailAndPassword, 
+    sendEmailVerification 
+  } from 'firebase/auth';
+
 import styles from './teacherregistration.module.css';
 import Buttons from '../Button/Button.module.css';
 
@@ -23,44 +32,46 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const auth = getAuth(app);
 
 const StatusModal = ({ message, type, isProcessing }) => {
-  if (!message) return null;
+    if (!message) return null;
+    
+    const getStatusClass = () => {
+      switch (type) {
+        case 'warning':
+          return styles.statusWarning;
+        case 'error':
+          return styles.statusError;
+        case 'success':
+          return styles.statusSuccess;
+        default:
+          return styles.statusInfo;
+      }
+    };
   
-  const getStatusClass = () => {
-    switch (type) {
-      case 'warning':
-        return styles.statusWarning;
-      case 'error':
-        return styles.statusError;
-      case 'success':
-        return styles.statusSuccess;
-      default:
-        return styles.statusInfo;
-    }
-  };
-
-  return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modalContent}>
-        <div className={`${styles.status} ${getStatusClass()} ${isProcessing ? styles['animate-pulse'] : ''}`}>
-          {message}
+    return (
+      <div className={styles.modalOverlay}>
+        <div className={styles.modalContent}>
+          <div className={`${styles.status} ${getStatusClass()} ${isProcessing ? styles['animate-pulse'] : ''}`}>
+            {message}
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 const TeacherRegistration = () => {
   const [formData, setFormData] = useState({
-    studentName: '',
+    name: '',
     email: '',
-    course: '',
     campus: '',
-    studentId: '',
+    teacherId: '',
+    upass:''
   });
+
   const [selfie, setSelfie] = useState(null);
-  const [uploadOption, setUploadOption] = useState('capture'); // New state to track upload method
+  const [uploadOption, setUploadOption] = useState('capture');
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [nfcReader, setNfcReader] = useState(null);
@@ -105,6 +116,34 @@ const TeacherRegistration = () => {
     return await getDownloadURL(snapshot.ref);
   };
 
+  const registerWithFirebaseAuth = async () => {
+    try {
+      // Create user with email and password
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        formData.email, 
+        formData.upass
+      );
+      
+      // Send email verification
+      await sendEmailVerification(userCredential.user);
+      
+      return userCredential.user;
+    } catch (error) {
+      // Handle specific Firebase Auth errors
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          throw new Error('Email is already registered');
+        case 'auth/invalid-email':
+          throw new Error('Invalid email format');
+        case 'auth/weak-password':
+          throw new Error('Password is too weak. Use a stronger password');
+        default:
+          throw error;
+      }
+    }
+  };
+
   const writeNfcAndSave = async () => {
     if (!('NDEFReader' in window)) {
       throw new Error('NFC not supported on this device');
@@ -112,6 +151,11 @@ const TeacherRegistration = () => {
 
     try {
       setIsSaving(true);
+      setStatus('Authenticating user...');
+      
+      // First, register user with Firebase Authentication
+      const firebaseUser = await registerWithFirebaseAuth();
+      
       setStatus('Waiting for NFC tag...');
       
       const ndef = new NDEFReader();
@@ -119,7 +163,6 @@ const TeacherRegistration = () => {
       await ndef.scan();
 
       return new Promise((resolve, reject) => {
-        // Using once to ensure the event listener only fires once
         const handleReading = async ({ serialNumber }) => {
           try {
             setStatus('Checking NFC authorization...');
@@ -131,12 +174,13 @@ const TeacherRegistration = () => {
 
             setStatus('Uploading data...');
             const selfieUrl = await uploadSelfie();
-            const position ="Teacher";
+            const position = "Teacher";
             const registrationData = {
               ...formData,
               nfcSerialNumber: serialNumber,
               selfieUrl,
               position,
+              firebaseUserId: firebaseUser.uid,
               createdAt: serverTimestamp()
             };
 
@@ -171,8 +215,6 @@ const TeacherRegistration = () => {
                 setStatus('NFC write failed, but registration saved');
               }
             }
-
-            // Remove the event listener after successful processing
             ndef.addEventListener("reading", handleReading, { once: true });
             resolve(docRef.id);
           } catch (error) {
@@ -225,11 +267,11 @@ const TeacherRegistration = () => {
 
   const resetForm = () => {
     setFormData({
-      studentName: '',
+      name: '',
       email: '',
-      course: '',
       campus: '',
-      studentId: ''
+      teacherId: '',
+      upass
     });
     setSelfie(null);
     setStatus('');
@@ -238,24 +280,23 @@ const TeacherRegistration = () => {
     }
   };
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // if (!('NDEFReader' in window)) {
-    //   updateStatus('NFC is not supported on this device', 'warning');
-    //   return;
-    // }
+    if (!('NDEFReader' in window)) {
+      updateStatus('NFC is not supported on this device', 'warning');
+      return;
+    }
 
     if (!window.confirm('Approach NFC tag to complete registration')) return;
 
     try {
       const docId = await writeNfcAndSave();
-      updateStatus('Registration completed successfully!', 'success');
+      updateStatus('Registration completed successfully! Please check your email for verification.', 'success');
       setTimeout(() => {
         updateStatus('');
         resetForm();
-      }, 3000);
+      }, 5000);
     } catch (error) {
       console.error('Registration Error:', error);
       updateStatus(`Registration failed: ${error.message}`, 'error');
@@ -273,20 +314,20 @@ const TeacherRegistration = () => {
       <h1>Teacher Registration</h1>
       
       {/* Status Modal */}
-      {/* {(!('NDEFReader' in window) || status) && (
+      {(!('NDEFReader' in window) || status) && (
         <StatusModal 
           message={!('NDEFReader' in window) ? 'NFC is not supported on this device' : status}
           type={!('NDEFReader' in window) ? 'warning' : statusType}
           isProcessing={isSaving}
         />
-      )} */}
+      )}
       
       <form onSubmit={handleSubmit} className={styles.form}>
         <input
           type="text"
-          placeholder="Student Name"
-          value={formData.studentName}
-          onChange={(e) => setFormData({...formData, studentName: e.target.value})}
+          placeholder="Teacher Name"
+          value={formData.name}
+          onChange={(e) => setFormData({...formData, name: e.target.value})}
           required
           disabled={isSaving}
         />
@@ -299,21 +340,21 @@ const TeacherRegistration = () => {
           required
           disabled={isSaving}
         />
-        
+
         <input
           type="text"
-          placeholder="Course"
-          value={formData.course}
-          onChange={(e) => setFormData({...formData, course: e.target.value})}
+          placeholder="Teacher ID"
+          value={formData.studentId}
+          onChange={(e) => setFormData({...formData, teacherId: e.target.value})}
           required
           disabled={isSaving}
         />
 
         <input
           type="text"
-          placeholder="Student ID"
-          value={formData.studentId}
-          onChange={(e) => setFormData({...formData, studentId: e.target.value})}
+          placeholder="Password"
+          value={formData.upass}
+          onChange={(e) => setFormData({...formData, upass: e.target.value})}
           required
           disabled={isSaving}
         />

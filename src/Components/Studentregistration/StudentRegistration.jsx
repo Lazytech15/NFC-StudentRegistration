@@ -1,12 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
+
 import { 
   getFirestore, doc, getDoc, addDoc, 
   collection, serverTimestamp 
 } from 'firebase/firestore';
+
 import { 
   getStorage, ref, uploadBytes, getDownloadURL 
 } from 'firebase/storage';
+
+import { 
+    getAuth, 
+    createUserWithEmailAndPassword, 
+    sendEmailVerification 
+  } from 'firebase/auth';
+
 import styles from './StudentRegistration.module.css';
 import Buttons from '../Button/Button.module.css';
 
@@ -23,49 +32,54 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const auth = getAuth(app);
 
 const StatusModal = ({ message, type, isProcessing }) => {
-  if (!message) return null;
+    if (!message) return null;
+    
+    const getStatusClass = () => {
+      switch (type) {
+        case 'warning':
+          return styles.statusWarning;
+        case 'error':
+          return styles.statusError;
+        case 'success':
+          return styles.statusSuccess;
+        default:
+          return styles.statusInfo;
+      }
+    };
   
-  const getStatusClass = () => {
-    switch (type) {
-      case 'warning':
-        return styles.statusWarning;
-      case 'error':
-        return styles.statusError;
-      case 'success':
-        return styles.statusSuccess;
-      default:
-        return styles.statusInfo;
-    }
-  };
-
-  return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modalContent}>
-        <div className={`${styles.status} ${getStatusClass()} ${isProcessing ? styles['animate-pulse'] : ''}`}>
-          {message}
+    return (
+      <div className={styles.modalOverlay}>
+        <div className={styles.modalContent}>
+          <div className={`${styles.status} ${getStatusClass()} ${isProcessing ? styles['animate-pulse'] : ''}`}>
+            {message}
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-const StudentRegistration = () => {
+const TeacherRegistration = () => {
   const [formData, setFormData] = useState({
     studentName: '',
     email: '',
     course: '',
     campus: '',
     studentId: '',
+    upass:''
   });
+
   const [selfie, setSelfie] = useState(null);
+  const [uploadOption, setUploadOption] = useState('capture');
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [nfcReader, setNfcReader] = useState(null);
   const [statusType, setStatusType] = useState('info');
   
   const fileInputRef = useRef(null);
+  const existingImageInputRef = useRef(null);
 
   const updateStatus = (message, type = 'info') => {
     setStatus(message);
@@ -86,6 +100,14 @@ const StudentRegistration = () => {
     setSelfie(file);
   };
 
+  const handleUploadOptionChange = (option) => {
+    setUploadOption(option);
+    setSelfie(null);
+    // Reset file inputs
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (existingImageInputRef.current) existingImageInputRef.current.value = '';
+  };
+
   const uploadSelfie = async () => {
     if (!selfie) return null;
     setStatus('Uploading selfie...');
@@ -95,6 +117,34 @@ const StudentRegistration = () => {
     return await getDownloadURL(snapshot.ref);
   };
 
+  const registerWithFirebaseAuth = async () => {
+    try {
+      // Create user with email and password
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        formData.email, 
+        formData.upass
+      );
+      
+      // Send email verification
+      await sendEmailVerification(userCredential.user);
+      
+      return userCredential.user;
+    } catch (error) {
+      // Handle specific Firebase Auth errors
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          throw new Error('Email is already registered');
+        case 'auth/invalid-email':
+          throw new Error('Invalid email format');
+        case 'auth/weak-password':
+          throw new Error('Password is too weak. Use a stronger password');
+        default:
+          throw error;
+      }
+    }
+  };
+
   const writeNfcAndSave = async () => {
     if (!('NDEFReader' in window)) {
       throw new Error('NFC not supported on this device');
@@ -102,6 +152,11 @@ const StudentRegistration = () => {
 
     try {
       setIsSaving(true);
+      setStatus('Authenticating user...');
+      
+      // First, register user with Firebase Authentication
+      const firebaseUser = await registerWithFirebaseAuth();
+      
       setStatus('Waiting for NFC tag...');
       
       const ndef = new NDEFReader();
@@ -109,7 +164,6 @@ const StudentRegistration = () => {
       await ndef.scan();
 
       return new Promise((resolve, reject) => {
-        // Using once to ensure the event listener only fires once
         const handleReading = async ({ serialNumber }) => {
           try {
             setStatus('Checking NFC authorization...');
@@ -121,12 +175,13 @@ const StudentRegistration = () => {
 
             setStatus('Uploading data...');
             const selfieUrl = await uploadSelfie();
-            const position = "Student"
+            const position = "Teacher";
             const registrationData = {
               ...formData,
               nfcSerialNumber: serialNumber,
               selfieUrl,
               position,
+              firebaseUserId: firebaseUser.uid,
               createdAt: serverTimestamp()
             };
 
@@ -161,8 +216,6 @@ const StudentRegistration = () => {
                 setStatus('NFC write failed, but registration saved');
               }
             }
-
-            // Remove the event listener after successful processing
             ndef.addEventListener("reading", handleReading, { once: true });
             resolve(docRef.id);
           } catch (error) {
@@ -215,11 +268,12 @@ const StudentRegistration = () => {
 
   const resetForm = () => {
     setFormData({
-      studentName: '',
+      name: '',
       email: '',
       course: '',
       campus: '',
-      studentId: ''
+      studentId: '',
+      upass
     });
     setSelfie(null);
     setStatus('');
@@ -227,8 +281,7 @@ const StudentRegistration = () => {
       fileInputRef.current.value = '';
     }
   };
-
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -241,11 +294,11 @@ const StudentRegistration = () => {
 
     try {
       const docId = await writeNfcAndSave();
-      updateStatus('Registration completed successfully!', 'success');
+      updateStatus('Registration completed successfully! Please check your email for verification.', 'success');
       setTimeout(() => {
         updateStatus('');
         resetForm();
-      }, 3000);
+      }, 5000);
     } catch (error) {
       console.error('Registration Error:', error);
       updateStatus(`Registration failed: ${error.message}`, 'error');
@@ -275,8 +328,8 @@ const StudentRegistration = () => {
         <input
           type="text"
           placeholder="Student Name"
-          value={formData.studentName}
-          onChange={(e) => setFormData({...formData, studentName: e.target.value})}
+          value={formData.name}
+          onChange={(e) => setFormData({...formData, name: e.target.value})}
           required
           disabled={isSaving}
         />
@@ -307,6 +360,15 @@ const StudentRegistration = () => {
           required
           disabled={isSaving}
         />
+
+        <input
+          type="text"
+          placeholder="Password"
+          value={formData.upass}
+          onChange={(e) => setFormData({...formData, upass: e.target.value})}
+          required
+          disabled={isSaving}
+        />
         
         <select
           value={formData.campus}
@@ -324,8 +386,34 @@ const StudentRegistration = () => {
           <option value="Angono Campus">Angono Campus</option>
           <option value="Cogeo Campus">Cogeo Campus</option>
         </select>
+
+        <div className={styles.uploadOptionContainer}>
+          <label>
+            <input
+              type="radio"
+              name="uploadOption"
+              value="capture"
+              checked={uploadOption === 'capture'}
+              onChange={() => handleUploadOptionChange('capture')}
+              disabled={isSaving}
+            />
+            Capture Selfie
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="uploadOption"
+              value="upload"
+              checked={uploadOption === 'upload'}
+              onChange={() => handleUploadOptionChange('upload')}
+              disabled={isSaving}
+            />
+            Upload Existing Image
+          </label>
+        </div>
         
-        {!selfie ? (
+        {/* Conditional rendering based on upload option */}
+        {uploadOption === 'capture' ? (
           <>
             <input 
               type="file"
@@ -346,7 +434,38 @@ const StudentRegistration = () => {
             </button>
           </>
         ) : (
-          <p>Selfie Captured: {selfie.name}</p>
+          <>
+            <input 
+              type="file"
+              ref={existingImageInputRef}
+              onChange={handleSelfie}
+              accept="image/*"
+              style={{display: 'none'}}
+              disabled={isSaving}
+            />
+            <button 
+              type="button"
+              onClick={() => existingImageInputRef.current.click()}
+              className={Buttons.buttons}
+              disabled={isSaving}
+            >
+              Upload Existing Image
+            </button>
+          </>
+        )}
+        
+        {/* Show selected image name if image is selected */}
+        {selfie && (
+          <p>
+            Selected Image: {selfie.name} 
+            <button 
+              type="button" 
+              onClick={() => setSelfie(null)}
+              className={styles.clearImageButton}
+            >
+              Clear
+            </button>
+          </p>
         )}
         
         <button 
@@ -361,4 +480,4 @@ const StudentRegistration = () => {
   );
 };
 
-export default StudentRegistration;
+export default TeacherRegistration;
