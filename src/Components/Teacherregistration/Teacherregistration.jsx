@@ -152,10 +152,6 @@ const TeacherRegistration = () => {
     try {
       setIsSaving(true);
       setStatus('Authenticating user...');
-
-      if (!(await NDEFReader.requestPermission())) {
-        throw new Error('NFC permission denied');
-      }
       
       // First, register user with Firebase Authentication
       const firebaseUser = await registerWithFirebaseAuth();
