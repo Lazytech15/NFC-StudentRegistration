@@ -67,7 +67,7 @@ const TeacherRegistration = () => {
     email: '',
     campus: '',
     teacherId: '',
-    upass:''
+    upass: ''
   });
 
   const [selfie, setSelfie] = useState(null);
@@ -76,6 +76,7 @@ const TeacherRegistration = () => {
   const [status, setStatus] = useState('');
   const [nfcReader, setNfcReader] = useState(null);
   const [statusType, setStatusType] = useState('info');
+  const [nfcSerialNumber, setNfcSerialNumber] = useState(null);
   
   const fileInputRef = useRef(null);
   const existingImageInputRef = useRef(null);
@@ -86,7 +87,6 @@ const TeacherRegistration = () => {
   };
 
   useEffect(() => {
-    // Cleanup function to abort NFC reader when component unmounts
     return () => {
       if (nfcReader) {
         nfcReader.abort();
@@ -102,7 +102,6 @@ const TeacherRegistration = () => {
   const handleUploadOptionChange = (option) => {
     setUploadOption(option);
     setSelfie(null);
-    // Reset file inputs
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (existingImageInputRef.current) existingImageInputRef.current.value = '';
   };
@@ -118,19 +117,16 @@ const TeacherRegistration = () => {
 
   const registerWithFirebaseAuth = async () => {
     try {
-      // Create user with email and password
       const userCredential = await createUserWithEmailAndPassword(
         auth, 
         formData.email, 
         formData.upass
       );
       
-      // Send email verification
       await sendEmailVerification(userCredential.user);
       
       return userCredential.user;
     } catch (error) {
-      // Handle specific Firebase Auth errors
       switch (error.code) {
         case 'auth/email-already-in-use':
           throw new Error('Email is already registered');
@@ -144,25 +140,17 @@ const TeacherRegistration = () => {
     }
   };
 
-  const writeNfcAndSave = async () => {
+  const scanNfcTag = async () => {
     if (!('NDEFReader' in window)) {
       throw new Error('NFC not supported on this device');
     }
-  
+
     try {
-      setIsSaving(true);
-      setStatus('Authenticating user...');
-      
-      // First, register user with Firebase Authentication
-      const firebaseUser = await registerWithFirebaseAuth();
-      
-      // Open NFC scanning BEFORE proceeding with other operations
       setStatus('Waiting for NFC tag...');
       const ndef = new NDEFReader();
       setNfcReader(ndef);
       await ndef.scan();
-  
-      // Wait explicitly for the NFC tag
+
       const serialNumber = await new Promise((resolve, reject) => {
         const handleReading = async (event) => {
           try {
@@ -174,32 +162,51 @@ const TeacherRegistration = () => {
               reject(new Error('Unauthorized NFC tag'));
               return;
             }
-  
-            // Remove listener after successful read
+
             ndef.removeEventListener("reading", handleReading);
             resolve(nfcSerialNumber);
           } catch (error) {
             reject(error);
           }
         };
-  
+
         ndef.addEventListener("reading", handleReading);
-  
-        // Optional: Add a timeout
+
         setTimeout(() => {
           ndef.removeEventListener("reading", handleReading);
           reject(new Error('NFC tag read timeout'));
-        }, 30000); // 30 seconds timeout
+        }, 30000);
       });
-  
-      // Only proceed after NFC tag is successfully tapped
-      setStatus('NFC tag detected. Uploading data...');
+
+      setNfcSerialNumber(serialNumber);
+      updateStatus('NFC tag detected successfully', 'success');
+      return serialNumber;
+    } catch (error) {
+      updateStatus(error.message, 'error');
+      throw error;
+    } finally {
+      if (nfcReader) {
+        nfcReader.abort();
+        setNfcReader(null);
+      }
+    }
+  };
+
+  const completeRegistration = async () => {
+    try {
+      setIsSaving(true);
+      setStatus('Authenticating user...');
+      
+      // Register user with Firebase Authentication
+      const firebaseUser = await registerWithFirebaseAuth();
+      
+      // Upload selfie
       const selfieUrl = await uploadSelfie();
       const position = "Teacher";
       const registrationData = {
         ...formData,
-        nfcSerialNumber: serialNumber,
-        currentNfcId: '',
+        nfcSerialNumber,
+        currentnfcId: '',
         selfieUrl,
         position,
         firebaseUserId: firebaseUser.uid,
@@ -213,11 +220,8 @@ const TeacherRegistration = () => {
       // Update the document with its own ID
       await updateDoc(docRef, { currentNfcId: docRef.id });
 
-      setStatus('Verifying NFC write...');
-      await verifyNfcWrite(docRef.id, ndef);
-  
-      // Write to NFC tag
       setStatus('Writing to NFC tag...');
+      const ndef = new NDEFReader();
       await ndef.write({
         records: [{
           recordType: "text",
@@ -230,35 +234,8 @@ const TeacherRegistration = () => {
       updateStatus(error.message, 'error');
       throw error;
     } finally {
-      // Ensure NFC reader is closed
-      if (nfcReader) {
-        nfcReader.abort();
-        setNfcReader(null);
-      }
+      setIsSaving(false);
     }
-  };
-
-  const verifyNfcWrite = async (expectedId, existingReader) => {
-    // Use the existing reader instead of creating a new one
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Verification timeout'));
-      }, 5000);
-  
-      existingReader.addEventListener("reading", ({ message }) => {
-        clearTimeout(timeout);
-        const verified = message.records.some(record => 
-          record.recordType === "text" && 
-          new TextDecoder().decode(record.data) === expectedId
-        );
-        
-        if (!verified) {
-          reject(new Error('NFC write verification failed'));
-        } else {
-          resolve();
-        }
-      }, { once: true });
-    });
   };
 
   const checkNfcAuthorization = async (serialNumber) => {
@@ -278,10 +255,11 @@ const TeacherRegistration = () => {
       email: '',
       campus: '',
       teacherId: '',
-      upass
+      upass: ''
     });
     setSelfie(null);
     setStatus('');
+    setNfcSerialNumber(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -295,11 +273,20 @@ const TeacherRegistration = () => {
       return;
     }
 
-    if (!window.confirm('Approach NFC tag to complete registration')) return;
-
     try {
-      const docId = await writeNfcAndSave();
+      // First, scan NFC tag
+      await scanNfcTag();
+
+      // Confirm before proceeding
+      if (!window.confirm('Do you want to complete the registration?')) {
+        setNfcSerialNumber(null);
+        return;
+      }
+
+      // Then complete registration
+      const docId = await completeRegistration();
       updateStatus('Registration completed successfully! Please check your email for verification.', 'success');
+      
       setTimeout(() => {
         updateStatus('');
         resetForm();
@@ -307,19 +294,13 @@ const TeacherRegistration = () => {
     } catch (error) {
       console.error('Registration Error:', error);
       updateStatus(`Registration failed: ${error.message}`, 'error');
-    } finally {
-      setIsSaving(false);
-      if (nfcReader) {
-        nfcReader.abort();
-        setNfcReader(null);
-      }
     }
   };
 
   return (
     <div className={styles.container}>
       <h1>Teacher Registration</h1>
-      
+
       {/* Status Modal */}
       {(!('NDEFReader' in window) || status) && (
         <StatusModal 
@@ -470,7 +451,7 @@ const TeacherRegistration = () => {
           className={`${Buttons.buttons} ${isSaving ? 'animate-pulse' : ''}`}
           disabled={!formData.teacherId || !selfie || isSaving || !('NDEFReader' in window)}
         >
-          {isSaving ? 'Processing...' : 'Complete Registration with NFC'}
+          {nfcSerialNumber ? 'Complete Registration' : 'Scan NFC Tag'}
         </button>
       </form>
     </div>
