@@ -43,17 +43,23 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [nfcSupported, setNfcSupported] = useState(false);
   const [nfcReader, setNfcReader] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if NFC is supported
+    let nfcReaderInstance = null;
+
+    // Only initialize NFC if not logged in
     const checkNFCSupport = async () => {
+      if (isLoggedIn) return; // Don't initialize if logged in
+
       if ('NDEFReader' in window) {
         try {
           const reader = new window.NDEFReader();
           await reader.scan();
           setNfcSupported(true);
           setNfcReader(reader);
+          nfcReaderInstance = reader;
           
           reader.onreading = async ({ message }) => {
             try {
@@ -71,6 +77,7 @@ const Login = () => {
                 const role = await checkUserRoleByNFC(nfcId);
                 if (role) {
                   localStorage.setItem('userRole', role);
+                  setIsLoggedIn(true); // Set logged in state
                   navigate('/dashboard');
                 } else {
                   setError('NFC card is not registered in the system.');
@@ -103,12 +110,20 @@ const Login = () => {
   
     // Cleanup function
     return () => {
-      if (nfcReader) {
-        // Clean up NFC reader if necessary
-        nfcReader.removeAllListeners?.();
+      if (nfcReaderInstance) {
+        try {
+          // Abort the NFC scan
+          nfcReaderInstance.abort();
+          // Remove all listeners
+          nfcReaderInstance.removeAllListeners?.();
+          setNfcReader(null);
+          setNfcSupported(false);
+        } catch (err) {
+          console.error('Error cleaning up NFC reader:', err);
+        }
       }
     };
-  }, []);
+  }, [isLoggedIn]); // Add isLoggedIn to dependency array
 
   const checkUserRoleByNFC = async (nfcId) => {
     try {
@@ -205,6 +220,7 @@ const Login = () => {
       
       if (role) {
         localStorage.setItem('userRole', role);
+        setIsLoggedIn(true); // Set logged in state
         navigate('/dashboard');
       } else {
         await signOut(auth);
@@ -217,7 +233,7 @@ const Login = () => {
       setLoading(false);
     }
   };
-
+  
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
@@ -228,6 +244,7 @@ const Login = () => {
       
       if (role) {
         localStorage.setItem('userRole', role);
+        setIsLoggedIn(true); // Set logged in state
         navigate('/dashboard');
       } else {
         await signOut(auth);

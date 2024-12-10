@@ -265,7 +265,7 @@ const handleSignOut = async () => {
       updateStatus('Registration completed! Please check your email for verification.', 'success');
       
       // Step 6: Sign out
-    //   await handleSignOut();
+      await handleSignOut();
       
       // Reset form after delay
       setTimeout(() => {
