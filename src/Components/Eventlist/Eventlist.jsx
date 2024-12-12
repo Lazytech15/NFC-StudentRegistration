@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getFirestore, collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { Edit2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit2, Trash2, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getAuth } from 'firebase/auth';
 import styles from './Eventlist.module.css'
@@ -82,6 +82,20 @@ const EventList = () => {
         {events.map((event) => (
           <div key={event.id} className={`${styles.event_card} ${expandedCard === event.id ? 'expanded' : ''}`}>
             <div className={styles.card_header} onClick={() => toggleExpand(event.id)}>
+            <div className={styles.card_image_container}>
+                {event.imageUrl ? (
+                  <img 
+                    src={event.imageUrl} 
+                    alt={event.eventName} 
+                    className={styles.card_image} 
+                  />
+                ) : (
+                  <div className={styles.card_image_placeholder}>
+                    <ImageIcon size={40} />
+                    <span>No Image</span>
+                  </div>
+                )}
+              </div>
               <div className={styles.card_basic_info}>
                 <h3>{event.eventName}</h3>
                 <p>ID: {event.id}</p>

@@ -173,6 +173,31 @@
   color: #666;
 }
 
+.status {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  padding: 1rem;
+  border-radius: 4px;
+  font-family: var(--f2);
+  margin-bottom: 1rem;
+  min-height: 60px;
+  z-index: 999999;
+}
+
+.status_command {
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+}
+
+.status_detail {
+  color: #00ff00;
+  margin-left: 1rem;
+}
+
 @media (max-width: 600px) {
   .logViewerHeader h2{
     font-size: var(--f-s);

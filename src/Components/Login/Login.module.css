@@ -160,6 +160,43 @@ body{
     align-items: center;
     z-index: 1000;
   }
+
+  .status {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: #00ff00;
+    padding: 1rem;
+    border-radius: 4px;
+    font-family: var(--f2);
+    margin-bottom: 1rem;
+    min-height: 60px;
+  }
+  
+  .status_command {
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+  }
+  
+  .status_detail {
+    color: #00ff00;
+    margin-left: 1rem;
+  }
+  
+  /* .reading {
+    animation: pulse 2s infinite;
+  } */
+  .error { 
+    color: red;
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
   
   @media (max-width: 640px) {
     .login_card {

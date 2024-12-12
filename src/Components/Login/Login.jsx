@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
-import TerminalLoading from '../Terminalloading/Terminalloading.jsx';
 
 import { initializeApp } from "firebase/app";
 import { 
@@ -38,6 +37,7 @@ const auth = getAuth();
 const db = getFirestore(app);
 
 const Login = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -45,37 +45,188 @@ const Login = () => {
   const [nfcSupported, setNfcSupported] = useState(false);
   const [nfcReader, setNfcReader] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const navigate = useNavigate();
-  const [showTerminal, setShowTerminal] = useState(false);
+  const [isReading, setIsReading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusDetails, setStatusDetails] = useState([]);
 
-  const loadingSteps = [
-    {
-      command: 'sudo system-check --verify-permissions',
-      output: [
-        'Checking system permissions...',
-        'Verifying user access...',
-        '✓ Permissions verified successfully'
-      ]
-    },
-    {
-      command: 'initialize-services --mode secure',
-      output: [
-        'Starting system services...',
-        'Loading security modules...',
-        'Configuring network interfaces...',
-        '✓ Services initialized'
-      ]
-    },
-    {
-      command: ({ email }) => `authenticate-user --email "${email}"`,
-      output: [
-        ({ email }) => `Authenticating ${email}...`,
-        'Validating credentials...',
-        'Checking access level...',
-        '✓ Authentication successful'
-      ]
+  const updateStatus = (command, details) => {
+    setStatusMessage(command);
+    setStatusDetails(details);
+    // For very quick operations, add a minimum display time
+    return new Promise(resolve => setTimeout(resolve, 800));
+  };
+  
+  const checkUserRole = async (userEmail) => {
+    try {
+      await updateStatus(
+        'check-role --user ' + userEmail,
+        ['Checking user permissions...']
+      );
+  
+      // Check in RegisteredAdmin collection
+      await updateStatus(
+        'verify-role --collection RegisteredAdmin',
+        ['Checking admin privileges...']
+      );
+      const adminQuery = query(
+        collection(db, "RegisteredAdmin"),
+        where("email", "==", userEmail)
+      );
+      const adminSnapshot = await getDocs(adminQuery);
+      if (!adminSnapshot.empty) {
+        await updateStatus(
+          'grant-role --type admin',
+          ['✓ Admin privileges confirmed']
+        );
+        return 'admin';
+      }
+  
+      // Check in RegisteredTeacher collection
+      await updateStatus(
+        'verify-role --collection RegisteredTeacher',
+        ['Checking teacher privileges...']
+      );
+      const teacherQuery = query(
+        collection(db, "RegisteredTeacher"),
+        where("email", "==", userEmail)
+      );
+      const teacherSnapshot = await getDocs(teacherQuery);
+      if (!teacherSnapshot.empty) {
+        await updateStatus(
+          'grant-role --type teacher',
+          ['✓ Teacher privileges confirmed']
+        );
+        return 'teacher';
+      }
+  
+      // Check in RegisteredStudent collection
+      await updateStatus(
+        'verify-role --collection RegisteredStudent',
+        ['Checking student privileges...']
+      );
+      const studentQuery = query(
+        collection(db, "RegisteredStudent"),
+        where("email", "==", userEmail)
+      );
+      const studentSnapshot = await getDocs(studentQuery);
+      if (!studentSnapshot.empty) {
+        await updateStatus(
+          'grant-role --type student',
+          ['✓ Student privileges confirmed']
+        );
+        return 'student';
+      }
+  
+      await updateStatus(
+        'verify-role --result none',
+        ['✗ No role assignments found']
+      );
+      setTimeout(() => {
+        setStatusMessage('');
+        setStatusDetails([]);
+      }, 1000);
+      return null;
+    } catch (error) {
+      await updateStatus(
+        'verify-role --error',
+        ['✗ Error checking roles', error.message]
+      );
+      setTimeout(() => {
+        setStatusMessage('');
+        setStatusDetails([]);
+      }, 1000);
+      console.error("Error checking user role:", error);
+      return null;
     }
-  ];
+  };
+
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setIsReading(true);
+    setError('');
+    
+    try {
+      await updateStatus('authenticate --verify-credentials', ['Checking credentials...']);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const role = await checkUserRole(userCredential.user.email);
+      
+      if (role) {
+        await updateStatus(
+          'grant-access --role ' + role,
+          [`✓ Access granted as ${role}`, 'Redirecting to dashboard...']
+        );
+        localStorage.setItem('userRole', role);
+        setIsLoggedIn(true);
+        // Add small delay before navigation
+        setTimeout(() => navigate('/dashboard'), 1000);
+      } else {
+        await updateStatus(
+          'verify-access --check-registration',
+          ['✗ Your account is not registered in the system']
+        );
+        setTimeout(() => {
+          setStatusMessage('');
+          setStatusDetails([]);
+        }, 1000);
+        await signOut(auth);
+        setError('Access denied. Please contact your administrator.');
+      }
+    } catch (err) {
+      await updateStatus(
+        'authenticate --verify-credentials',
+        ['✗ Authentication failed']
+      );
+      setTimeout(() => {
+        setStatusMessage('');
+        setStatusDetails([]);
+      }, 1000);
+      setError("Access Denied, Please check you email and password");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setIsReading(true);
+    setError('');
+    
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const role = await checkUserRole(result.user.email);
+      
+      if (role) {
+        await updateStatus(
+          'grant-access --role ' + role,
+          [`✓ Access granted as ${role}`, 'Redirecting to dashboard...']
+        );
+        localStorage.setItem('userRole', role);
+        setIsLoggedIn(true); // Set logged in state
+        setTimeout(() => navigate('/dashboard'), 1000);
+      } else {
+        await updateStatus(
+          'verify-access --check-registration',
+          ['✗ Your account is not registered in the system']
+        );
+        await signOut(auth);
+        setError('Access denied. Please contact your administrator.');
+      }
+    } catch (err) {
+      await updateStatus(
+        'authenticate --verify-credentials',
+        ['✗ Authentication failed', authError.message]
+      )
+      setTimeout(() => {
+        setStatusMessage('');
+        setStatusDetails([]);
+      }, 1000);
+      setError(err.message);
+      
+    } finally {
+      // setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let nfcReaderInstance = null;
@@ -91,6 +242,11 @@ const Login = () => {
           setNfcSupported(true);
           setNfcReader(reader);
           nfcReaderInstance = reader;
+          setIsReading(true);
+          addTerminalStatus(
+            'initialize-nfc --scan-mode',
+            ['✓ NFC reader initialized', 'Waiting for NFC card...']
+          );
           
           reader.onreading = async ({ message }) => {
             try {
@@ -99,23 +255,54 @@ const Login = () => {
               );
           
               if (!nfcRecord) {
+                await updateStatus(
+                  'verify-nfc --check-data',
+                  ['✗ Invalid NFC card: No user data found']
+                );
                 throw new Error('Invalid NFC card: No user data found');
               }
           
               const nfcId = new TextDecoder().decode(nfcRecord.data);
+              await updateStatus(
+                'read-nfc --get-data',
+                [`✓ NFC data retrieved: ${nfcId}`]
+              );
               
               try {
-                setShowTerminal(true);
+                
+                await updateStatus(
+                  'authenticate --verify-credentials',
+                  ['Checking user credentials...']
+                );
                 const role = await checkUserRoleByNFC(nfcId);
                 if (role) {
+                  await updateStatus(
+                    'grant-access --role ' + role,
+                    [`✓ Access granted as ${role}`, 'Redirecting to dashboard...']
+                  );
                   localStorage.setItem('userRole', role);
                   setIsLoggedIn(true);
-                  navigate('/dashboard');
+                  setTimeout(() => navigate('/dashboard'), 1000);
                 } else {
+                  await updateStatus(
+                    'verify-access --check-registration',
+                    ['✗ NFC card is not registered in the system']
+                  );
+                  setTimeout(() => {
+                    setStatusMessage('');
+                    setStatusDetails([]);
+                  }, 1000);
                   setError('NFC card is not registered in the system.');
                 }
               } catch (authError) {
-                setShowTerminal(true);
+                await updateStatus(
+                  'authenticate --verify-credentials',
+                  ['✗ Authentication failed', authError.message]
+                );
+                setTimeout(() => {
+                  setStatusMessage('');
+                  setStatusDetails([]);
+                }, 1000);
                 console.error('Authentication error:', authError);
                 setError('Failed to authenticate with NFC card.');
               }
@@ -125,24 +312,38 @@ const Login = () => {
             }
           };
           
-          reader.onerror = (error) => {
+          reader.onerror = async (error) =>  {
+            await updateStatus(
+              'nfc-error --get-details',
+              ['✗ Error reading NFC card', error.message]
+            );
+            setTimeout(() => {
+              setStatusMessage('');
+              setStatusDetails([]);
+            }, 1000);
             console.error('NFC read error:', error);
             setError('Error reading NFC card.');
           };
           
         } catch (err) {
+          await updateStatus(
+            'initialize-nfc --check-support',
+            ['✗ NFC initialization failed', err.message]
+          );
+          setTimeout(() => {
+            setStatusMessage('');
+            setStatusDetails([]);
+          }, 1000);
           console.error('Error setting up NFC:', err);
           setNfcSupported(false);
         }
-      } else {
-        setNfcSupported(false);
-      }
+      } 
     };
   
     checkNFCSupport();
   
     // Cleanup function
-    return () => {
+    return async () => {
       if (nfcReaderInstance) {
         try {
           // Abort the NFC scan
@@ -151,6 +352,10 @@ const Login = () => {
           nfcReaderInstance.removeAllListeners?.();
           setNfcReader(null);
           setNfcSupported(false);
+          await updateStatus(
+            'cleanup-nfc --remove-listeners',
+            ['✓ NFC reader cleaned up successfully']
+          );
         } catch (err) {
           console.error('Error cleaning up NFC reader:', err);
         }
@@ -159,8 +364,16 @@ const Login = () => {
   }, [isLoggedIn]); // Add isLoggedIn to dependency array
 
   const checkUserRoleByNFC = async (nfcId) => {
-    setShowTerminal(true);
     try {
+      await updateStatus(
+        'check-role --user ' + userEmail,
+        ['Checking user permissions...']
+      );
+
+      await updateStatus(
+        'verify-role --collection RegisteredAdmin',
+        ['Checking admin privileges...']
+      );
       // Check in RegisteredAdmin collection
       const adminQuery = query(
         collection(db, "RegisteredAdmin"),
@@ -170,8 +383,17 @@ const Login = () => {
       if (!adminSnapshot.empty) {
         const userData = adminSnapshot.docs[0].data();
         await signInWithEmailAndPassword(auth, userData.email, userData.upass);
+        await updateStatus(
+          'grant-role --type admin',
+          ['✓ Admin privileges confirmed']
+        );
         return 'admin';
       }
+
+      await updateStatus(
+        'verify-role --collection RegisteredTeacher',
+        ['Checking teacher privileges...']
+      );
   
       // Check in RegisteredTeacher collection
       const teacherQuery = query(
@@ -182,9 +404,18 @@ const Login = () => {
       if (!teacherSnapshot.empty) {
         const userData = teacherSnapshot.docs[0].data();
         await signInWithEmailAndPassword(auth, userData.email, userData.upass);
+        await updateStatus(
+          'grant-role --type teacher',
+          ['✓ Teacher privileges confirmed']
+        );
         return 'teacher';
       }
   
+      await updateStatus(
+        'verify-role --collection RegisteredStudent',
+        ['Checking student privileges...']
+      );
+
       // Check in RegisteredStudent collection
       const studentQuery = query(
         collection(db, "RegisteredStudent"),
@@ -194,125 +425,42 @@ const Login = () => {
       if (!studentSnapshot.empty) {
         const userData = studentSnapshot.docs[0].data();
         await signInWithEmailAndPassword(auth, userData.email, userData.upass);
+        await updateStatus(
+          'grant-role --type student',
+          ['✓ Student privileges confirmed']
+        );
         return 'student';
       }
   
       return null;
     } catch (error) {
-      setShowTerminal(false);
       console.error("Error checking user role by NFC:", error);
       throw error; // Propagate the error to handle it in the calling function
-    }
-  };
-  
-  const checkUserRole = async (userEmail) => {
-    try {
-      // Check in RegisteredAdmin collection
-      const adminQuery = query(
-        collection(db, "RegisteredAdmin"),
-        where("email", "==", userEmail)
-      );
-      const adminSnapshot = await getDocs(adminQuery);
-      if (!adminSnapshot.empty) {
-        return 'admin';
-      }
-
-      // Check in RegisteredTeacher collection
-      const teacherQuery = query(
-        collection(db, "RegisteredTeacher"),
-        where("email", "==", userEmail)
-      );
-      const teacherSnapshot = await getDocs(teacherQuery);
-      if (!teacherSnapshot.empty) {
-        return 'teacher';
-      }
-
-      // Check in RegisteredStudent collection
-      const studentQuery = query(
-        collection(db, "RegisteredStudent"),
-        where("email", "==", userEmail)
-      );
-      const studentSnapshot = await getDocs(studentQuery);
-      if (!studentSnapshot.empty) {
-        return 'student';
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error checking user role:", error);
-      return null;
-    }
-  };
-
-  const handleEmailLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setShowTerminal(true);
-    setError('');
-    
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const role = await checkUserRole(userCredential.user.email);
-      
-      if (role) {
-        localStorage.setItem('userRole', role);
-        setIsLoggedIn(true); // Set logged in state
-        navigate('/dashboard');
-      } else {
-        await signOut(auth);
-        alert('Access denied. You are not registered as an admin, teacher, or student.');
-        setError('Access denied. Please contact your administrator.');
-      }
-    } catch (err) {
-      setError(err.message);
-      setShowTerminal(false);
-    } finally {
-      // setLoading(false);
-    }
-  };
-  
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setShowTerminal(true);
-    setError('');
-    
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const role = await checkUserRole(result.user.email);
-      
-      if (role) {
-        localStorage.setItem('userRole', role);
-        setIsLoggedIn(true); // Set logged in state
-        navigate('/dashboard');
-      } else {
-        await signOut(auth);
-        alert('Access denied. You are not registered as an admin, teacher, or student.');
-        setError('Access denied. Please contact your administrator.');
-      }
-    } catch (err) {
-      setError(err.message);
-      setShowTerminal(false);
-    } finally {
-      // setLoading(false);
     }
   };
 
   return (
     <div className={styles.login_container}>
-      {showTerminal && (
-        <div className={styles.terminal_overlay}>
-          <TerminalLoading
-            isLoading={loading}
-            steps={loadingSteps}
-            email={email}
-            title="user@ubuntu:~/login"
-            processingText="Processing..."
-            processDelay={300}
-            stepDelay={500}
-            connectionTimeout={15000}
-          />
-        </div>
-      )}
+
+    {/* Status Display */}
+    {(statusMessage || loading) && ( 
+      <div className={`${styles.status} ${isReading ? styles.reading : ''}`}> 
+        <div className={styles.status_command}>
+          {statusMessage}
+        </div> 
+        {statusDetails.map((detail, index) => ( 
+          <div 
+            key={index} 
+            className={`${styles.status_detail} ${detail.includes('failed') ? 'error' : ''}`}
+          >
+            {detail}
+          </div> 
+        ))} 
+      </div> 
+    )}
+
+
+
       <div className={styles.login_card}>
         <h1 className={styles.login_title}>Login</h1>
         
@@ -356,7 +504,7 @@ const Login = () => {
             className={styles.login_button}
             disabled={loading}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? "Please wait.." : 'Login'}
           </button>
         </form>
         

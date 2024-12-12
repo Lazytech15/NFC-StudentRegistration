@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getFirestore, collection, addDoc, updateDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import styles from './CreateEvent.module.css';
 import Buttons from '../Button/Button.module.css';
+import { ImagePlus } from 'lucide-react';
+
 
 const CreateEvent = () => {
   // State for form fields
   const location = useLocation();
   const { userData } = location.state || {};
   const db = getFirestore();
+  const storage = getStorage();
   
   // Existing state declarations
   const [eventName, setEventName] = useState('');
@@ -22,15 +26,67 @@ const CreateEvent = () => {
   const [startTime, setStartTime] = useState('');
   const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [isReading, setIsReading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusDetails, setStatusDetails] = useState([]);
+  const [eventImage, setEventImage] = useState(null);
+  const [imageUrl, setImageUrl] = useState('');
+
+  const updateStatus = (command, details) => {
+    setStatusMessage(command);
+    setStatusDetails(details);
+    // For very quick operations, add a minimum display time
+    return new Promise(resolve => setTimeout(resolve, 800));
+  };
 
   // Mock data for ESP32 devices
   const esp32Devices = ['ESP32-001', 'ESP32-002', 'ESP32-003'];
 
+  // Handle image upload
+  const handleImageChange = (e) => {
+    if (e.target.files[0]) {
+      setEventImage(e.target.files[0]);
+    }
+  };
+
+  const uploadImage = async () => {
+    if (!eventImage) return null;
+
+    const userEmail = userData?.email?.replace(/[@.]/g, '_') || 'anonymous';
+    const timestamp = new Date().getTime();
+    const storageRef = ref(storage, `users/${userEmail}/event_images/${timestamp}_${eventImage.name}`);
+
+    try {
+      await updateStatus(
+        'Uploading image',
+        ['Please wait while the image is being uploaded']
+      );
+      
+      const snapshot = await uploadBytes(storageRef, eventImage);
+      const url = await getDownloadURL(snapshot.ref);
+      setImageUrl(url);
+      return url;
+    } catch (error) {
+      console.error("Error uploading image: ", error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setLoading(true);
+    setIsReading(true);
+
     try {
-      // Create the event data without the docId
+      // Upload image first if exists
+      const uploadedImageUrl = await uploadImage();
+      
+      await updateStatus(
+        `Getting all of data gathered`,
+        ['Creating event without ID']
+      );
+      
       const eventData = {
         eventName,
         entryLimit,
@@ -43,6 +99,7 @@ const CreateEvent = () => {
         startTime,
         endDate,
         endTime,
+        imageUrl: uploadedImageUrl, // Add the image URL to eventData
         creatorNfcId: userData?.currentnfcId || null,
         createdAt: new Date().toISOString(),
         createdBy: userData?.email || null,
@@ -50,9 +107,20 @@ const CreateEvent = () => {
       };
 
       const docRef = await addDoc(collection(db, "PendingEvent"), eventData);
+      await updateStatus(
+        `Event created with ID: ${docRef.id}`,
+        ['Processing for data upload']
+      );
       await updateDoc(docRef, { docId: docRef.id });
-      console.log("Event created with ID: ", docRef.id);
-      alert("Event created successfully!");
+      await updateStatus(
+        `Event created`,
+        ['Check your Event List']
+      );
+      setTimeout(() => {
+        setStatusMessage('');
+        setStatusDetails([]);
+      }, 1000);
+      
       resetForm();
     } catch (error) {
       console.error("Error creating event: ", error);
@@ -71,15 +139,42 @@ const CreateEvent = () => {
     setStatus('pending');
     setStartDate('');
     setStartTime('');
-    setEndDate('');
     setEndTime('');
+    setEndDate('');
+    setEventImage(null);
+    setImageUrl('');
+    setLoading(false);
+    setIsReading(false);
   };
 
   return (
     <div className={styles.container}>
-      <div className={styles.card}>
-        <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>Create New Event</h2>
+
+    {/* Status Display */}
+    {(statusMessage || loading) && (
+      <div className={`${styles.status} ${isReading ? styles.reading : ''}`}>
+        <div className={styles.status_command}>{statusMessage}</div>
+        {statusDetails.map((detail, index) => (
+          <div key={index} className={styles.status_detail}>{detail}</div>
+        ))}
+      </div>
+    )}
+
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>Create New Event</h2>
+            <div className={`${styles.imageUpload} ${eventImage ? styles.hasImage : ''}`}>
+              <ImagePlus size={20} className={styles.imageUploadIcon} />
+              <label className={styles.label}>
+                {eventImage ? 'Image Selected' : 'Event Image (Optional)'}
+              </label> 
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={handleImageChange}
+                className={styles.imageInput}
+              />
+            </div>
         </div>
         
         <form className={styles.form} onSubmit={handleSubmit}>
@@ -223,8 +318,8 @@ const CreateEvent = () => {
             </div>
           </div>
           
-          <button type="submit" className={Buttons.buttons} name="Create Event Submit">
-            <span>Create Event</span>
+          <button type="submit" className={Buttons.buttons} disabled={loading} name="Create Event Submit">
+            {loading ? "Please wait.." : 'Create Event'}
           </button>
         </form>
       </div>
