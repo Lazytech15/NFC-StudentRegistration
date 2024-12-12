@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
+import TerminalLoading from '../Terminalloading/Terminalloading.jsx';
 
 import { initializeApp } from "firebase/app";
 import { 
@@ -45,6 +46,36 @@ const Login = () => {
   const [nfcReader, setNfcReader] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
+  const [showTerminal, setShowTerminal] = useState(false);
+
+  const loadingSteps = [
+    {
+      command: 'sudo system-check --verify-permissions',
+      output: [
+        'Checking system permissions...',
+        'Verifying user access...',
+        '✓ Permissions verified successfully'
+      ]
+    },
+    {
+      command: 'initialize-services --mode secure',
+      output: [
+        'Starting system services...',
+        'Loading security modules...',
+        'Configuring network interfaces...',
+        '✓ Services initialized'
+      ]
+    },
+    {
+      command: ({ email }) => `authenticate-user --email "${email}"`,
+      output: [
+        ({ email }) => `Authenticating ${email}...`,
+        'Validating credentials...',
+        'Checking access level...',
+        '✓ Authentication successful'
+      ]
+    }
+  ];
 
   useEffect(() => {
     let nfcReaderInstance = null;
@@ -58,6 +89,7 @@ const Login = () => {
           await reader.scan();
           setNfcSupported(true);
           setNfcReader(reader);
+          setShowTerminal(true);
           nfcReaderInstance = reader;
           
           reader.onreading = async ({ message }) => {
@@ -82,25 +114,30 @@ const Login = () => {
                   setError('NFC card is not registered in the system.');
                 }
               } catch (authError) {
+                setShowTerminal(false);
                 console.error('Authentication error:', authError);
                 setError('Failed to authenticate with NFC card.');
               }
             } catch (err) {
+              setShowTerminal(false);
               console.error('Error processing NFC card:', err);
               setError('Failed to process NFC card.');
             }
           };
           
           reader.onerror = (error) => {
+            setShowTerminal(false);
             console.error('NFC read error:', error);
             setError('Error reading NFC card.');
           };
           
         } catch (err) {
+          setShowTerminal(false);
           console.error('Error setting up NFC:', err);
           setNfcSupported(false);
         }
       } else {
+        setShowTerminal(false);
         setNfcSupported(false);
       }
     };
@@ -214,6 +251,7 @@ const Login = () => {
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setShowTerminal(true);
     setError('');
     
     try {
@@ -231,13 +269,15 @@ const Login = () => {
       }
     } catch (err) {
       setError(err.message);
+      setShowTerminal(false);
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
   
   const handleGoogleLogin = async () => {
     setLoading(true);
+    setShowTerminal(true);
     setError('');
     
     try {
@@ -255,13 +295,28 @@ const Login = () => {
       }
     } catch (err) {
       setError(err.message);
+      setShowTerminal(false);
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
 
   return (
     <div className={styles.login_container}>
+      {showTerminal && (
+        <div className={styles.terminal_overlay}>
+          <TerminalLoading
+            isLoading={loading}
+            steps={loadingSteps}
+            email={email}
+            title="user@ubuntu:~/login"
+            processingText="Processing..."
+            processDelay={300}
+            stepDelay={500}
+            connectionTimeout={15000}
+          />
+        </div>
+      )}
       <div className={styles.login_card}>
         <h1 className={styles.login_title}>Login</h1>
         
