@@ -1,6 +1,7 @@
 /* Login.css */
 body{
   font-family: var(--f2);
+  background-image: url('./assets/login_cover.png');
 }
 .login_container {
     display: flex;
@@ -162,10 +163,10 @@ body{
   }
 
   .status {
-    position: absolute;
-    top: 50%;
+    position: fixed;
+    bottom: 80px;
     left: 50%;
-    transform: translate(-50%,-50%);
+    transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.8);
     color: #00ff00;
     padding: 1rem;
@@ -173,17 +174,30 @@ body{
     font-family: var(--f2);
     margin-bottom: 1rem;
     min-height: 60px;
-  }
-  
-  .status_command {
+    opacity: 0;
+    animation: slideUp 0.5s ease-out forwards;
+}
+
+.status_command {
     color: #ffffff;
     margin-bottom: 0.5rem;
-  }
-  
-  .status_detail {
+}
+
+.status_detail {
     color: #00ff00;
     margin-left: 1rem;
-  }
+}
+
+@keyframes slideUp {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 100%);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
   
   /* .reading {
     animation: pulse 2s infinite;
@@ -198,9 +212,10 @@ body{
     100% { opacity: 1; }
   }
   
-  @media (max-width: 640px) {
+  @media (max-width: 600px) {
     .login_card {
       padding: 1.5rem;
+      width: 70%;
     }
     
     .login_title {
@@ -211,5 +226,8 @@ body{
     .login_button,
     .google_button {
       padding: 0.625rem;
+    }
+    .status{
+      width: 70%;
     }
   }

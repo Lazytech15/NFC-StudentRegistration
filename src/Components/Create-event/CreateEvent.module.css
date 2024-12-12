@@ -240,10 +240,10 @@
 }
 
 .status {
-  position: absolute;
-  top: 50%;
+  position: fixed;
+  bottom: 80px;
   left: 50%;
-  transform: translate(-50%,-50%);
+  transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.8);
   color: #00ff00;
   padding: 1rem;
@@ -251,6 +251,8 @@
   font-family: var(--f2);
   margin-bottom: 1rem;
   min-height: 60px;
+  opacity: 0;
+  animation: slideUp 0.5s ease-out forwards;
 }
 
 .status_command {
@@ -263,14 +265,20 @@
   margin-left: 1rem;
 }
 
-.reading {
-  animation: pulse 2s infinite;
+@keyframes slideUp {
+  0% {
+      opacity: 0;
+      transform: translate(-50%, 100%);
+  }
+  100% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+  }
 }
 
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
+.status_detail {
+  color: #00ff00;
+  margin-left: 1rem;
 }
 
 @media (max-width: 600px) {
@@ -291,5 +299,8 @@
   .input,.select{
     padding: 0.3em;
     font-size: var(--f-ss);
+  }
+  .status{
+    width: 70%;
   }
 }

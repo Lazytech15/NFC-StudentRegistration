@@ -8,6 +8,11 @@
     font-style: normal;
   } */
 
+  * {
+    transition: all 0.3s ease-in-out;
+  }
+  
+
   :root{
     /* font styles */
     --f1:"PT Mono", monospace;
@@ -17,6 +22,11 @@
     /* button */
     --b-bc: #4f46e5;
     --b-bch:rgb(92, 84, 247);
+
+    /* color */
+    --c1:hsl(0, 0%, 0%);
+    --c2:hsl(0, 0%, 100%);
+    --c3:rgb(236, 236, 236);
 
     /* font size */
     --f-ss:0.7em;

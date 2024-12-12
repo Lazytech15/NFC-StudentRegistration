@@ -6,7 +6,7 @@
   
   
   .event_list_container h2 {
-    color: #333;
+    color: var(--c2);
     margin-bottom: 2rem;
     font-size: 1.8rem;
   }
@@ -22,6 +22,7 @@
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
+    background-color: var(--c3);
   }
   
   .card_header {

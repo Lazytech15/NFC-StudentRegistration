@@ -207,7 +207,7 @@ const FileManager = () => {
       });
   
       const foldersData = result.prefixes
-        .filter(folder => folder.name !== 'process_log') // Filter out the process_log folder
+        .filter(folder => folder.name !== 'process_log' && folder.name !== 'event_images' && folder.name !== 'profile') // Filter out the process_log, event_images, and profile folders
         .map(folder => ({
           name: folder.name,
           type: 'folder'
@@ -220,6 +220,7 @@ const FileManager = () => {
       console.error('Error listing files:', error);
     }
   };
+  
   
 
   const handleFileUpload = async (event) => {

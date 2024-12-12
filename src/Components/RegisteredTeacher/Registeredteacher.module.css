@@ -8,8 +8,13 @@
   margin-bottom: 20px;
 }
 
+.header svg{
+  filter: invert(1);
+}
+
 .header h2 {
   margin-left: 10px;
+  color: var(--c2);
 }
 
 .tableContainer {
@@ -26,11 +31,17 @@
   border: 1px solid #ddd;
   padding: 12px;
   text-align: left;
+  text-wrap: nowrap;
 }
 
 .usersTable th {
   background-color: #f2f2f2;
   font-weight: bold;
+  text-align: center;
+}
+
+.usersTable td{
+  background-color: var(--c3);
 }
 
 .actionButtons {
@@ -157,12 +168,13 @@
 .logContent {
   white-space: pre-wrap;
   word-wrap: break-word;
-  font-family: monospace;
+  font-family: var(--f2);
   background-color: #f4f4f4;
   padding: 10px;
   border-radius: 4px;
   max-height: 300px;
   overflow-y: auto;
+  font-size: var(--f-ss);
 }
 
 .logLoading,
@@ -173,14 +185,53 @@
   color: #666;
 }
 
-@media (max-width: 390px) {
-  .logViewerHeader h2{
-    font-size: var(--f-ms);
+.status {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  padding: 1rem;
+  border-radius: 4px;
+  font-family: var(--f2);
+  margin-bottom: 1rem;
+  min-height: 60px;
+  opacity: 0;
+  animation: slideUp 0.5s ease-out forwards;
+}
+
+.status_command {
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+}
+
+.status_detail {
+  color: #00ff00;
+  margin-left: 1rem;
+}
+
+@keyframes slideUp {
+  0% {
+      opacity: 0;
+      transform: translate(-50%, 100%);
   }
-  .logEntry h3{
+  100% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+  }
+}
+
+.status_detail {
+  color: #00ff00;
+  margin-left: 1rem;
+}
+
+@media (max-width: 600px) {
+  .logViewerHeader h2{
     font-size: var(--f-s);
   }
-  .logContent{
-    font-size: var(--f-ss);
+  .status{
+    width: 70%;
   }
 }
