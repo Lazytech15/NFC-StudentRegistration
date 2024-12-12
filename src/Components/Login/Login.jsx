@@ -243,7 +243,7 @@ const Login = () => {
           setNfcReader(reader);
           nfcReaderInstance = reader;
           setIsReading(true);
-          addTerminalStatus(
+          await updateStatus(
             'initialize-nfc --scan-mode',
             ['✓ NFC reader initialized', 'Waiting for NFC card...']
           );
