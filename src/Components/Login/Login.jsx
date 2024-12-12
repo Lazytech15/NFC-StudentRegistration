@@ -80,8 +80,9 @@ const Login = () => {
   useEffect(() => {
     let nfcReaderInstance = null;
 
+    // Only initialize NFC if not logged in
     const checkNFCSupport = async () => {
-      if (isLoggedIn) return;
+      if (isLoggedIn) return; // Don't initialize if logged in
 
       if ('NDEFReader' in window) {
         try {
@@ -107,37 +108,31 @@ const Login = () => {
                 const role = await checkUserRoleByNFC(nfcId);
                 if (role) {
                   localStorage.setItem('userRole', role);
-                  setIsLoggedIn(true);
+                  setIsLoggedIn(true); // Set logged in state
                   navigate('/dashboard');
                 } else {
-                  setShowTerminal(false);
                   setError('NFC card is not registered in the system.');
                 }
               } catch (authError) {
-                setShowTerminal(false);
                 console.error('Authentication error:', authError);
                 setError('Failed to authenticate with NFC card.');
               }
             } catch (err) {
-              setShowTerminal(false);
               console.error('Error processing NFC card:', err);
               setError('Failed to process NFC card.');
             }
           };
           
           reader.onerror = (error) => {
-            setShowTerminal(false);
             console.error('NFC read error:', error);
             setError('Error reading NFC card.');
           };
           
         } catch (err) {
-          setShowTerminal(false);
           console.error('Error setting up NFC:', err);
           setNfcSupported(false);
         }
       } else {
-        setShowTerminal(false);
         setNfcSupported(false);
       }
     };
@@ -161,14 +156,13 @@ const Login = () => {
     };
   }, [isLoggedIn]); // Add isLoggedIn to dependency array
 
-  const checkUserRoleByNFC = async (nfcId, userEmail) => {
+  const checkUserRoleByNFC = async (nfcId) => {
     setShowTerminal(true);
     try {
       // Check in RegisteredAdmin collection
       const adminQuery = query(
         collection(db, "RegisteredAdmin"),
-        where("currentnfcId", "==", nfcId),
-        where("email", "==", userEmail)
+        where("currentnfcId", "==", nfcId)
       );
       const adminSnapshot = await getDocs(adminQuery);
       if (!adminSnapshot.empty) {
@@ -180,8 +174,7 @@ const Login = () => {
       // Check in RegisteredTeacher collection
       const teacherQuery = query(
         collection(db, "RegisteredTeacher"),
-        where("currentnfcId", "==", nfcId),
-        where("email", "==", userEmail)
+        where("currentnfcId", "==", nfcId)
       );
       const teacherSnapshot = await getDocs(teacherQuery);
       if (!teacherSnapshot.empty) {
@@ -193,8 +186,7 @@ const Login = () => {
       // Check in RegisteredStudent collection
       const studentQuery = query(
         collection(db, "RegisteredStudent"),
-        where("currentnfcId", "==", nfcId),
-        where("email", "==", userEmail)
+        where("currentnfcId", "==", nfcId)
       );
       const studentSnapshot = await getDocs(studentQuery);
       if (!studentSnapshot.empty) {
