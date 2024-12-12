@@ -105,15 +105,17 @@ const Login = () => {
               const nfcId = new TextDecoder().decode(nfcRecord.data);
               
               try {
+                setShowTerminal(true);
                 const role = await checkUserRoleByNFC(nfcId);
                 if (role) {
                   localStorage.setItem('userRole', role);
-                  setIsLoggedIn(true); // Set logged in state
+                  setIsLoggedIn(true);
                   navigate('/dashboard');
                 } else {
                   setError('NFC card is not registered in the system.');
                 }
               } catch (authError) {
+                setShowTerminal(true);
                 console.error('Authentication error:', authError);
                 setError('Failed to authenticate with NFC card.');
               }
