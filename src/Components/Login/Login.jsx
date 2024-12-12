@@ -247,6 +247,11 @@ const Login = () => {
             'initialize-nfc --scan-mode',
             ['✓ NFC reader initialized', 'Waiting for NFC card...']
           );
+
+          setTimeout(() => {
+            setStatusMessage('');
+            setStatusDetails([]);
+          }, 1000);    
           
           reader.onreading = async ({ message }) => {
             try {
@@ -337,6 +342,15 @@ const Login = () => {
           console.error('Error setting up NFC:', err);
           setNfcSupported(false);
         }
+      }else{
+        await updateStatus(
+          'initialize-nfc --check-support',
+          ['✗ NFC initialization failed']
+        );
+        setTimeout(() => {
+          setStatusMessage('');
+          setStatusDetails([]);
+        }, 2000);
       } 
     };
   
@@ -365,11 +379,6 @@ const Login = () => {
 
   const checkUserRoleByNFC = async (nfcId) => {
     try {
-      await updateStatus(
-        'check-role --user ' + userEmail,
-        ['Checking user permissions...']
-      );
-
       await updateStatus(
         'verify-role --collection RegisteredAdmin',
         ['Checking admin privileges...']
@@ -464,11 +473,11 @@ const Login = () => {
       <div className={styles.login_card}>
         <h1 className={styles.login_title}>Login</h1>
         
-        {nfcSupported && (
+        {/* {nfcSupported && (
           <div className={styles.nfc_status}>
             <p>NFC is enabled. Tap your card to login.</p>
           </div>
-        )}
+        )} */}
         
         <form onSubmit={handleEmailLogin} className={styles.login_form}>
           <div className={styles.form_group}>
