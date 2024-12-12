@@ -89,7 +89,6 @@ const Login = () => {
           await reader.scan();
           setNfcSupported(true);
           setNfcReader(reader);
-          setShowTerminal(true);
           nfcReaderInstance = reader;
           
           reader.onreading = async ({ message }) => {
@@ -108,9 +107,10 @@ const Login = () => {
                 const role = await checkUserRoleByNFC(nfcId);
                 if (role) {
                   localStorage.setItem('userRole', role);
-                  setIsLoggedIn(true); // Set logged in state
+                  setIsLoggedIn(true);
                   navigate('/dashboard');
                 } else {
+                  setShowTerminal(false);
                   setError('NFC card is not registered in the system.');
                 }
               } catch (authError) {
@@ -162,6 +162,7 @@ const Login = () => {
   }, [isLoggedIn]); // Add isLoggedIn to dependency array
 
   const checkUserRoleByNFC = async (nfcId, userEmail) => {
+    setShowTerminal(true);
     try {
       // Check in RegisteredAdmin collection
       const adminQuery = query(
@@ -204,6 +205,7 @@ const Login = () => {
   
       return null;
     } catch (error) {
+      setShowTerminal(false);
       console.error("Error checking user role by NFC:", error);
       throw error; // Propagate the error to handle it in the calling function
     }
