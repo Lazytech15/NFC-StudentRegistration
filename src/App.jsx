@@ -10,9 +10,11 @@ import FileManager from './Components/Filemanager/Filemanager.jsx';
 import TeacherRegistration from './Components/Teacherregistration/Teacherregistration.jsx';
 import RegisteredTeachers from './Components/RegisteredTeacher/Registeredteacher.jsx';
 import RegisteredStudents from './Components/RegisteredStudent/RegisteredStudent.jsx';
+import Process_log from './Components/Process_log/Process_log.jsx';
 
 function App() {
   return (
+    <Process_log>
     <Router>
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
@@ -30,6 +32,7 @@ function App() {
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
+    </Process_log>
   );
 }
 

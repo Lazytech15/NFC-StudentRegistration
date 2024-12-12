@@ -49,9 +49,8 @@ const Login = () => {
   useEffect(() => {
     let nfcReaderInstance = null;
 
-    // Only initialize NFC if not logged in
     const checkNFCSupport = async () => {
-      if (isLoggedIn) return; // Don't initialize if logged in
+      if (isLoggedIn) return;
 
       if ('NDEFReader' in window) {
         try {
@@ -125,12 +124,13 @@ const Login = () => {
     };
   }, [isLoggedIn]); // Add isLoggedIn to dependency array
 
-  const checkUserRoleByNFC = async (nfcId) => {
+  const checkUserRoleByNFC = async (nfcId, userEmail) => {
     try {
       // Check in RegisteredAdmin collection
       const adminQuery = query(
         collection(db, "RegisteredAdmin"),
-        where("currentnfcId", "==", nfcId)
+        where("currentnfcId", "==", nfcId),
+        where("email", "==", userEmail)
       );
       const adminSnapshot = await getDocs(adminQuery);
       if (!adminSnapshot.empty) {
@@ -142,7 +142,8 @@ const Login = () => {
       // Check in RegisteredTeacher collection
       const teacherQuery = query(
         collection(db, "RegisteredTeacher"),
-        where("currentnfcId", "==", nfcId)
+        where("currentnfcId", "==", nfcId),
+        where("email", "==", userEmail)
       );
       const teacherSnapshot = await getDocs(teacherQuery);
       if (!teacherSnapshot.empty) {
@@ -154,7 +155,8 @@ const Login = () => {
       // Check in RegisteredStudent collection
       const studentQuery = query(
         collection(db, "RegisteredStudent"),
-        where("currentnfcId", "==", nfcId)
+        where("currentnfcId", "==", nfcId),
+        where("email", "==", userEmail)
       );
       const studentSnapshot = await getDocs(studentQuery);
       if (!studentSnapshot.empty) {
@@ -169,7 +171,7 @@ const Login = () => {
       throw error; // Propagate the error to handle it in the calling function
     }
   };
-
+  
   const checkUserRole = async (userEmail) => {
     try {
       // Check in RegisteredAdmin collection

@@ -100,6 +100,7 @@ const CreateEvent = () => {
               <select 
                 className={styles.select}
                 value={entryLimit}
+                name="Entry Limit"
                 onChange={(e) => setEntryLimit(e.target.value)}
               >
                 <option value="unlimited">Unlimited</option>
@@ -136,11 +137,12 @@ const CreateEvent = () => {
               <select 
                 className={styles.select}
                 value={purpose}
+                name="Purpose"
                 onChange={(e) => setPurpose(e.target.value)}
               >
-                <option value="event">Event Attendance</option>
-                <option value="membership">Membership Attendance</option>
-                <option value="room">Room Attendance</option>
+                <option value="event" name="Purpose">Event Attendance</option>
+                <option value="membership" name="Purpose">Membership Attendance</option>
+                <option value="room" name="Purpose">Room Attendance</option>
               </select>
             </div>
 
@@ -149,6 +151,7 @@ const CreateEvent = () => {
               <select 
                 className={styles.select}
                 value={selectedEsp32}
+                name="ESP32 Device"
                 onChange={(e) => setSelectedEsp32(e.target.value)}
               >
                 {esp32Devices.map((device) => (
@@ -164,13 +167,14 @@ const CreateEvent = () => {
               <select 
                 className={styles.select}
                 value={status}
+                name="Status"
                 onChange={(e) => setStatus(e.target.value)}
               >
-                <option value="pending">Pending</option>
-                <option value="ongoing">Ongoing</option>
-                <option value="completed">Completed</option>
-                <option value="pause">Pause</option>
-                <option value="continued">Continued</option>
+                <option value="pending" name="Status">Pending</option>
+                <option value="ongoing" name="Status">Ongoing</option>
+                <option value="completed" name="Status">Completed</option>
+                <option value="pause" name="Status">Pause</option>
+                <option value="continued" name="Status">Continued</option>
               </select>
             </div>
 
@@ -180,6 +184,7 @@ const CreateEvent = () => {
                 type="date"
                 className={styles.input}
                 value={startDate}
+                name="Start Date"
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
@@ -190,6 +195,7 @@ const CreateEvent = () => {
                 type="time"
                 className={styles.input}
                 value={startTime}
+                name="Start Time"
                 onChange={(e) => setStartTime(e.target.value)}
               />
             </div>
@@ -200,6 +206,7 @@ const CreateEvent = () => {
                 type="date"
                 className={styles.input}
                 value={endDate}
+                name="End Date"
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </div>
@@ -210,13 +217,14 @@ const CreateEvent = () => {
                 type="time"
                 className={styles.input}
                 value={endTime}
+                name="End Time"
                 onChange={(e) => setEndTime(e.target.value)}
               />
             </div>
           </div>
           
-          <button type="submit" className={Buttons.buttons}>
-            Create Event
+          <button type="submit" className={Buttons.buttons} name="Create Event Submit">
+            <span>Create Event</span>
           </button>
         </form>
       </div>

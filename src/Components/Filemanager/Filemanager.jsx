@@ -4,6 +4,7 @@ import { FolderPlus, Upload, Folder, File, ArrowLeft, MoreVertical, X } from 'lu
 import { getStorage, ref, uploadBytes, listAll, getDownloadURL, deleteObject } from 'firebase/storage';
 import styles from './FileManager.module.css';
 import Buttons from '../Button/Button.module.css';
+import Process_log from '../Process_log/Process_log.jsx';
 
 const ActionDropdown = ({ isOpen, onClose, onMove, onCopy, onDelete, onRename }) => {
   const dropdownRef = useRef(null);
@@ -204,12 +205,14 @@ const FileManager = () => {
           type: 'file'
         };
       });
-
-      const foldersData = result.prefixes.map(folder => ({
-        name: folder.name,
-        type: 'folder'
-      }));
-
+  
+      const foldersData = result.prefixes
+        .filter(folder => folder.name !== 'process_log') // Filter out the process_log folder
+        .map(folder => ({
+          name: folder.name,
+          type: 'folder'
+        }));
+  
       const filesData = await Promise.all(filesPromises);
       setFiles(filesData);
       setFolders(foldersData);
@@ -217,6 +220,7 @@ const FileManager = () => {
       console.error('Error listing files:', error);
     }
   };
+  
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -225,6 +229,12 @@ const FileManager = () => {
     try {
       const fileRef = ref(storage, `${currentPath}/${file.name}`);
       await uploadBytes(fileRef, file);
+
+          // Call the logger
+    if (window.userActionLogger) {
+      window.userActionLogger.onFileUpload(event);
+    }
+
       await listFilesAndFolders(currentPath);
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -238,6 +248,12 @@ const FileManager = () => {
     const placeholderRef = ref(storage, `${currentPath}/${folderName}/.placeholder`);
     const emptyBlob = new Blob([''], { type: 'text/plain' });
     await uploadBytes(placeholderRef, emptyBlob);
+
+      // Call the logger
+    if (window.userActionLogger) {
+      window.userActionLogger.onCreateFolder(folderName);
+    }
+
     await listFilesAndFolders(currentPath);
   };
 
@@ -332,6 +348,11 @@ const handleCopy = async () => {
         await deleteFolderRecursive(itemPath);
       }
 
+          // Call the logger
+    if (window.userActionLogger) {
+      window.userActionLogger.onDelete(selectedItem);
+    }
+
       await listFilesAndFolders(currentPath);
       // setSelectedItem(null);
     } catch (error) {
@@ -383,6 +404,11 @@ const handleCopy = async () => {
         await deleteObject(oldRef);
       }
 
+          // Call the logger
+    if (window.userActionLogger) {
+      window.userActionLogger.onRename(selectedItem, newName);
+    }
+
       await listFilesAndFolders(currentPath);
       // setSelectedItem(null);
     } catch (error) {
@@ -425,6 +451,15 @@ const handleCopy = async () => {
           operation === 'move'
         );
       }
+
+          // Call the logger
+    if (window.userActionLogger) {
+      if (operation === 'move') {
+        window.userActionLogger.onMove(persistentSelectedItem, destinationPath);
+      } else if (operation === 'copy') {
+        window.userActionLogger.onCopy(persistentSelectedItem, destinationPath);
+      }
+    }
   
       // Reset states
       setIsFolderSelectorOpen(false);
@@ -522,6 +557,7 @@ const handleCopy = async () => {
   );
 
   return (
+    <Process_log currentPath={currentPath} userData={userData}>
     <div className={styles.fileManager}>
       <div className={styles.header}>
         <h2>File Manager</h2>
@@ -571,6 +607,7 @@ const handleCopy = async () => {
       />
 
     </div>
+    </Process_log>
   );
 };
 

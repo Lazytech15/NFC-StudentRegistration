@@ -41,6 +41,7 @@ const Sidebar = () => {
   const [registeredTeachers, setRegisteredTeachers] = useState([]);
   const [registeredStudents, setRegisteredStudents] = useState([]);
   const [ndefReader, setNdefReader] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const auth = getAuth();
   const db = getFirestore();
 
@@ -223,24 +224,24 @@ const Sidebar = () => {
             {isStudent ? (
               <>
                 <li className={styles.navItem}>
-                  <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                  <div className={styles.navLink} onClick={() => setIsOpen(false)}>
                     <Archive size={20} />
                     <span>Event Attendance</span>
-                  </a>
+                  </div>
                 </li>
 
                 <li className={styles.navItem}>
-                  <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                  <div className={styles.navLink} onClick={() => setIsOpen(false)}>
                     <Archive size={20} />
                     <span>Room Attendance</span>
-                  </a>
+                  </div>
                 </li>
 
                 <li className={styles.navItem}>
-                  <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                  <div className={styles.navLink} onClick={() => setIsOpen(false)}>
                     <Archive size={20} />
                     <span>Membership Attendance</span>
-                  </a>
+                  </div>
                 </li>
               </>
             ) : (
@@ -260,10 +261,10 @@ const Sidebar = () => {
                 </Link>
 
                 <li className={styles.navItem}>
-                <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                <div className={styles.navLink} onClick={() => setIsOpen(false)}>
                   <Archive size={20} />
                   <span>Archive</span>
-                </a>
+                </div>
                 </li>
 
                 <li className={styles.navItem}>
@@ -316,10 +317,10 @@ const Sidebar = () => {
                 </li>
 
                 <li className={styles.navItem}>
-                  <a href="#" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                  <div className={styles.navLink} onClick={() => setIsOpen(false)}>
                     <Cpu size={20} />
                     <span>ESP32 NFC Scanners</span>
-                  </a>
+                  </div>
                   <ul className={styles.dropdown}>
                     {scanners.map((scanner, index) => (
                       <li key={index} className={styles.dropdownItem}>
