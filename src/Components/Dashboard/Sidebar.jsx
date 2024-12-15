@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from './Dashboard.module.css';
+import Loading from '../Loading/Loading.jsx';
 import { 
   User, 
   LayoutDashboard, 
@@ -45,45 +46,94 @@ const Sidebar = () => {
   const [ndefReader, setNdefReader] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const auth = getAuth();
   const db = getFirestore();
 
-  useEffect(() => { 
-    const unsubscribe = auth.onAuthStateChanged(async (user) => { 
-      setCurrentUser(user); 
-      if (user) { 
-        const email = user.email; 
-        const userData = await fetchUserData(email); 
-        setUserData(userData);
-        navigate('/dashboard', { state: { userData } });
-      } 
-    }); 
-
-    // Check and cleanup any existing NDEFReader
-    const checkAndCleanupNFC = async () => {
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsLoading(true);
       try {
+        const unsubscribe = auth.onAuthStateChanged(async (user) => {
+          setCurrentUser(user);
+          if (user) {
+            const email = user.email;
+            const userData = await fetchUserData(email);
+            setUserData(userData);
+            
+            // Fetch registered users
+            const [teachersSnapshot, studentsSnapshot] = await Promise.all([
+              getDocs(collection(db, "RegisteredTeacher")),
+              getDocs(collection(db, "RegisteredStudent"))
+            ]);
+            
+            setRegisteredTeachers(teachersSnapshot.docs.map(doc => doc.data().name).slice(0, 5));
+            setRegisteredStudents(studentsSnapshot.docs.map(doc => doc.data().name).slice(0, 5));
+            
+            navigate('/dashboard', { state: { userData } });
+          }
+          setIsLoading(false);
+        });
+
+        // Cleanup NFC
         if ('NDEFReader' in window) {
           const existingReader = await window.NDEFReader;
           if (existingReader) {
             existingReader.abort();
-            console.log('Existing NFC reader cleaned up');
           }
         }
+
+        return () => {
+          unsubscribe();
+          if (ndefReader) {
+            ndefReader.abort();
+          }
+        };
       } catch (error) {
-        console.error('Error cleaning up NFC reader:', error);
+        console.error("Error loading initial data:", error);
+        setIsLoading(false);
       }
     };
 
-    checkAndCleanupNFC();
-    
-    return () => {
-      unsubscribe();
-      // Cleanup NFC reader on component unmount
-      if (ndefReader) {
-        ndefReader.abort();
-      }
-    }; 
+    loadInitialData();
   }, []);
+
+  // useEffect(() => { 
+  //   const unsubscribe = auth.onAuthStateChanged(async (user) => { 
+  //     setCurrentUser(user); 
+  //     if (user) { 
+  //       const email = user.email; 
+  //       const userData = await fetchUserData(email); 
+  //       setUserData(userData);
+  //       navigate('/dashboard', { state: { userData } });
+  //     } 
+  //   }); 
+
+  //   // Check and cleanup any existing NDEFReader
+  //   const checkAndCleanupNFC = async () => {
+  //     try {
+  //       if ('NDEFReader' in window) {
+  //         const existingReader = await window.NDEFReader;
+  //         if (existingReader) {
+  //           existingReader.abort();
+  //           console.log('Existing NFC reader cleaned up');
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('Error cleaning up NFC reader:', error);
+  //     }
+  //   };
+
+  //   checkAndCleanupNFC();
+    
+  //   return () => {
+  //     unsubscribe();
+  //     // Cleanup NFC reader on component unmount
+  //     if (ndefReader) {
+  //       ndefReader.abort();
+  //     }
+  //   }; 
+  // }, []);
 
   useEffect(() => {
     if (currentUser) {
@@ -106,25 +156,27 @@ const Sidebar = () => {
     }
   }, [currentUser, db]);
 
-  useEffect(() => {
-    const fetchRegisteredUsers = async () => {
-      try {
-        // Fetch teachers
-        const teachersSnapshot = await getDocs(collection(db, "RegisteredTeacher"));
-        const teachersList = teachersSnapshot.docs.map(doc => doc.data().name).slice(0, 5);
-        setRegisteredTeachers(teachersList);
+  // useEffect(() => {
+  //   const fetchRegisteredUsers = async () => {
+  //     try {
+  //       // Fetch teachers
+  //       const teachersSnapshot = await getDocs(collection(db, "RegisteredTeacher"));
+  //       const teachersList = teachersSnapshot.docs.map(doc => doc.data().name).slice(0, 5);
+  //       setRegisteredTeachers(teachersList);
 
-        // Fetch students
-        const studentsSnapshot = await getDocs(collection(db, "RegisteredStudent"));
-        const studentsList = studentsSnapshot.docs.map(doc => doc.data().name).slice(0, 5);
-        setRegisteredStudents(studentsList);
-      } catch (error) {
-        console.error("Error fetching registered users:", error);
-      }
-    };
+  //       // Fetch students
+  //       const studentsSnapshot = await getDocs(collection(db, "RegisteredStudent"));
+  //       const studentsList = studentsSnapshot.docs.map(doc => doc.data().name).slice(0, 5);
+  //       setRegisteredStudents(studentsList);
+  //     } catch (error) {
+  //       console.error("Error fetching registered users:", error);
+  //     }
+  //   };
 
-    fetchRegisteredUsers();
-  }, [db]);
+  //   fetchRegisteredUsers();
+  // }, [db]);
+
+  
   
   const fetchUserData = async (email) => { 
     try { 
@@ -224,6 +276,24 @@ const Sidebar = () => {
   const isStudent = userData?.position === 'Student';
   const isTeacher = userData?.position === 'Teacher';
   const isAdmin = userData?.position === 'Admin';
+
+  if (isLoading) {
+    return (
+      <div className={styles.loadingContainer}>
+        <Loading text="Loading dashboard..." size="large" />
+      </div>
+    );
+  }
+
+  // If no user data is available after loading, show appropriate message
+  if (!userData && !isLoading) {
+    return (
+      <div className={styles.errorContainer}>
+        <p>Please log in to access the dashboard</p>
+        <button onClick={() => navigate('/login')}>Go to Login</button>
+      </div>
+    );
+  }
 
   return (
     <>

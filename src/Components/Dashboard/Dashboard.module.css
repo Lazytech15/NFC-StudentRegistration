@@ -292,7 +292,7 @@
     z-index: 1001;
     background: none;
     border: none;
-    color: var(--c3);
+    color: rgb(32, 27, 27);
     cursor: pointer;
     padding: 0.5rem;
   }

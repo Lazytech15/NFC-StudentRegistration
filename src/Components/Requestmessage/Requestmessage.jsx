@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Send, X, Paperclip, Mail, Inbox, ExternalLink, Trash } from 'lucide-react';
+import { Send, X, Paperclip, Mail, Inbox, ExternalLink, Trash, Menu } from 'lucide-react';
 import styles from './Requestmessage.module.css';
 import { getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp, doc, updateDoc, or } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import Buttons from '../Button/Button.module.css';
 
 const RequestForm = ({ onClose }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [inboxMessages, setInboxMessages] = useState([]);
+  const [sentMessages, setSentMessages] = useState([]);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [currentFolder, setCurrentFolder] = useState('inbox');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [formData, setFormData] = useState({
     to: '',
     subject: '',
@@ -30,27 +34,45 @@ const RequestForm = ({ onClose }) => {
       if (!currentUser) return;
   
       const messagesRef = collection(db, 'Messages');
-      let q;
       
-      if (currentFolder === 'inbox') {
-        q = query(messagesRef, where('sendTo', '==', currentUser.email));
-      } else {
-        q = query(messagesRef, where('sender', '==', currentUser.email));
-      }
-      
-      const querySnapshot = await getDocs(q);
-      
-      const fetchedMessages = [];
-      querySnapshot.forEach((doc) => {
-        fetchedMessages.push({ id: doc.id, ...doc.data() });
+      // Fetch Inbox Messages
+      const inboxQuery = query(messagesRef, where('sendTo', '==', currentUser.email));
+      const inboxSnapshot = await getDocs(inboxQuery);
+      const inboxFetchedMessages = [];
+      inboxSnapshot.forEach((doc) => {
+        inboxFetchedMessages.push({ id: doc.id, ...doc.data() });
       });
-  
+      
+      // Fetch Sent Messages
+      const sentQuery = query(messagesRef, where('sender', '==', currentUser.email));
+      const sentSnapshot = await getDocs(sentQuery);
+      const sentFetchedMessages = [];
+      sentSnapshot.forEach((doc) => {
+        sentFetchedMessages.push({ id: doc.id, ...doc.data() });
+      });
+
       // Sort messages by timestamp in descending order
-      fetchedMessages.sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis());
-      setMessages(fetchedMessages);
+      inboxFetchedMessages.sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis());
+      sentFetchedMessages.sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis());
+
+      // Update state
+      setInboxMessages(inboxFetchedMessages);
+      setSentMessages(sentFetchedMessages);
+      
+      // Set messages based on current folder
+      setMessages(currentFolder === 'inbox' ? inboxFetchedMessages : sentFetchedMessages);
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
+  };
+
+  const handleFolderChange = (folder) => {
+    setCurrentFolder(folder);
+    setShowCompose(false);
+    setSelectedMessage(null);
+    
+    // Set messages based on selected folder
+    setMessages(folder === 'inbox' ? inboxMessages : sentMessages);
   };
   
   const handleToread = async (messageId) => {
@@ -115,6 +137,17 @@ const RequestForm = ({ onClose }) => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleSidebarItemClick = (folder) => {
+    setCurrentFolder(folder);
+    setShowCompose(false);
+    setSelectedMessage(null);
+    setIsSidebarOpen(false);
+  };
+
   return (
     <>
       <div className={`${styles.formOverlay} ${isMinimized ? '' : styles.visible}`} onClick={onClose} />
@@ -122,41 +155,41 @@ const RequestForm = ({ onClose }) => {
         {/* Header */}
         <div className={styles.composeHeader}>
           <h2 className={styles.headerTitle}>Messages</h2>
+          <button 
+            className={styles.hamburgerMenu} 
+            onClick={toggleSidebar}
+          >
+            <Menu />
+          </button>
         </div>
 
         {/* Main Content */}
         <div className={styles.mainContent}>
           {/* Sidebar */}
-          <div className={styles.sidebar}>
+          <div className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarMobile : ''}`}>
             <button 
-              className={styles.composeBtn}
+              className={Buttons.buttons}
               onClick={() => {
                 setShowCompose(true);
                 setSelectedMessage(null);
+                setIsSidebarOpen(false);
               }}
             >
               <Mail /> Compose
             </button>
+            
             <div className={styles.sidebarMenu}>
               <button 
                 className={`${styles.menuItem} ${currentFolder === 'inbox' && !showCompose ? styles.active : ''}`}
-                onClick={() => {
-                  setShowCompose(false);
-                  setSelectedMessage(null);
-                  setCurrentFolder('inbox');
-                }}
+                onClick={() => handleFolderChange('inbox')}
               >
-                <Inbox /> Inbox ({messages.filter(m => m.sendTo === auth.currentUser?.email).length})
+                <Inbox /> Inbox ({inboxMessages.length})
               </button>
               <button 
                 className={`${styles.menuItem} ${currentFolder === 'sent' && !showCompose ? styles.active : ''}`}
-                onClick={() => {
-                  setShowCompose(false);
-                  setSelectedMessage(null);
-                  setCurrentFolder('sent');
-                }}
+                onClick={() => handleFolderChange('sent')}
               >
-                <ExternalLink /> Sent ({messages.filter(m => m.sender === auth.currentUser?.email).length})
+                <ExternalLink /> Sent ({sentMessages.length})
               </button>
             </div>
           </div>
