@@ -14,19 +14,9 @@ const UserLogViewer = ({ email, onClose }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isReading, setIsReading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
-  const [statusDetails, setStatusDetails] = useState([]);
 
   const auth = getAuth();
   const storage = getStorage();
-
-  const updateStatus = (command, details) => {
-    setStatusMessage(command);
-    setStatusDetails(details);
-    // For very quick operations, add a minimum display time
-    return new Promise(resolve => setTimeout(resolve, 800));
-  };
 
   const formatEmailForPath = (email) => {
     return email.replace(/[@.]/g, '_');
@@ -36,24 +26,11 @@ const UserLogViewer = ({ email, onClose }) => {
     const fetchLogs = async () => {
       try {
         setLoading(true);
-        setIsReading(true);
-  
-        await updateStatus(
-          'Fetching log folder',
-          ['Please wait...']
-        );
   
         const userEmail = formatEmailForPath(email);
         const logsRef = ref(storage, `users/${userEmail}/process_log`);
-        await updateStatus(
-          'Log folder retrieved successfully',
-          ['Extracting data, please wait...']
-        );
         const fileList = await listAll(logsRef);
-        await updateStatus(
-          'Extraction complete',
-          ['Preparing for display, please wait...']
-        );
+
         const logPromises = fileList.items.map(async (item) => {
           const url = await getDownloadURL(item);
           const response = await fetch(url);
@@ -76,30 +53,7 @@ const UserLogViewer = ({ email, onClose }) => {
         const sortedLogs = logResults.sort((a, b) => 
           b.timestamp.localeCompare(a.timestamp)
         );
-  
-        if (fileList.items.length === 0) {
-          await updateStatus(
-            'Empty Log',
-            ['No action yet']
-          );
-  
-          setTimeout(() => {
-            setStatusMessage('');
-            setStatusDetails([]);
-          }, 1000);
-        } else {
-          await updateStatus(
-            'Log Displayed Successfully',
-            ['Retrieval of log successfully']
-          );
-  
-          setTimeout(() => {
-            setStatusMessage('');
-            setStatusDetails([]);
-          }, 1000);
-        }
-  
-        setTimeout(() => setLogs(sortedLogs), 1000);
+        setLogs(sortedLogs)
         setError(null);
       } catch (err) {
         console.error('Error fetching logs:', err);
@@ -111,21 +65,18 @@ const UserLogViewer = ({ email, onClose }) => {
   
     fetchLogs();
   }, [email]);
+
+  if (loading) {
+    return <div className={styles.loadingContainer}>Loading teachers...</div>;
+  }
+
+  if (error) {
+    return <div className={styles.errorContainer}>{error}</div>;
+  }
   
 
   return (
     <div className={styles.logViewerContainer}>
-
-    {/* Status Display */}
-    {(statusMessage || loading) && (
-      <div className={`${styles.status} ${isReading ? styles.reading : ''}`}>
-        <div className={styles.status_command}>{statusMessage}</div>
-        {statusDetails.map((detail, index) => (
-          <div key={index} className={styles.status_detail}>{detail}</div>
-        ))}
-      </div>
-    )}
-
       <div className={styles.logViewerHeader}>
         <h2>User Activity Logs for {email}</h2>
         <button onClick={onClose} className={styles.closeButton}>
@@ -154,46 +105,12 @@ const RegisteredStudent = () => {
   const [error, setError] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
-  const [isReading, setIsReading] = useState(true);
-  const [statusMessage, setStatusMessage] = useState('');
-  const [statusDetails, setStatusDetails] = useState([]);
-
-  const updateStatus = (command, details) => {
-    setStatusMessage(command);
-    setStatusDetails(details);
-    // For very quick operations, add a minimum display time
-    return new Promise(resolve => setTimeout(resolve, 800));
-  };
 
   useEffect(() => {
     const fetchRegisteredStudents = async () => {
-      await updateStatus(
-        'Fetching Data from Database',
-        ['Please wait...']
-      );
       try {
         const db = getFirestore();
         const studentsSnapshot = await getDocs(collection(db, "RegisteredStudent"));
-        if(studentsSnapshot){
-          await updateStatus(
-            'Fetching complete',
-            ['Retrieving All Students Data']
-          );
-          setTimeout(() => {
-            setStatusMessage('');
-            setStatusDetails([]);
-          }, 1000);
-        }else{
-          await updateStatus(
-            'Fetching complete',
-            ['No Data Found']
-          );
-
-          setTimeout(() => {
-            setStatusMessage('');
-            setStatusDetails([]);
-          }, 1000);
-        }
 
         const studentsList = studentsSnapshot.docs.map(doc => ({
           id: doc.id,
@@ -202,12 +119,10 @@ const RegisteredStudent = () => {
 
         setTimeout(() => setStudents(studentsList), 1000);
         setLoading(false);
-        setIsReading(false);
       } catch (error) {
         console.error("Error fetching registered teachers:", error);
         setError("Failed to load teachers");
         setLoading(false);
-        setIsReading(false);
       }
     };
 
@@ -221,12 +136,10 @@ const RegisteredStudent = () => {
 
   const handleEdit = (student) => {
     console.log('Edit student:', student);
-    // Placeholder for edit functionality
   };
 
   const handleDelete = (student) => {
     console.log('Delete teacher:', student);
-    // Placeholder for delete functionality
   };
 
   const handleCloseLogModal = () => {
@@ -234,19 +147,16 @@ const RegisteredStudent = () => {
     setSelectedStudent(null);
   };
 
+  if (loading) {
+    return <div className={styles.loadingContainer}>Loading teachers...</div>;
+  }
+
+  if (error) {
+    return <div className={styles.errorContainer}>{error}</div>;
+  }
+
   return (
     <div className={styles.registeredUsersContainer}>
-
-      {/* Status Display */}
-      {(statusMessage || loading) && (
-        <div className={`${styles.status} ${isReading ? styles.reading : ''}`}>
-          <div className={styles.status_command}>{statusMessage}</div>
-          {statusDetails.map((detail, index) => (
-            <div key={index} className={styles.status_detail}>{detail}</div>
-          ))}
-        </div>
-      )}
-
       <div className={styles.header}>
         <Users size={24} />
         <h2>Registered Student</h2>

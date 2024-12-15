@@ -1,6 +1,7 @@
-import { Outlet } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
+import React from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import StatisticsChart from './Dashboardstatistic';
 import styles from './Dashboard.module.css';
 
 function Dashboard() {
@@ -13,10 +14,20 @@ function Dashboard() {
       <Sidebar />
       <main className={styles.mainContent}>
         {isRootPath ? (
-          <div className={styles.welcomeContainer}>
-            <h1 className={styles.welcomeTitle}>Welcome<br/> <span>{userData?.name}</span></h1>
-            <p className={styles.welcomeText}>Select an option from the sidebar to get started</p>
-          </div>
+          <>
+            <div className={styles.welcomeContainer}>
+              <h1 className={styles.welcomeTitle}>
+                Welcome<br/> 
+                <span>{userData?.name}</span>
+              </h1>
+              <p className={styles.welcomeText}>
+                Select an option from the sidebar to get started
+              </p>
+            </div>
+            {userData?.position !== "Student" && userData?.position !== "Teacher" && (
+              <StatisticsChart />
+            )}
+          </>
         ) : (
           <Outlet />
         )}

@@ -12,7 +12,9 @@ import {
   LogOut,
   ClipboardList,
   Menu,
-  X 
+  X,
+  Mail,
+  MessageCircle 
 } from 'lucide-react';
 
 import { initializeApp } from "firebase/app";
@@ -28,7 +30,7 @@ const firebaseConfig = {
 };
 
 import { getAuth, signOut } from "firebase/auth";
-import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -42,6 +44,7 @@ const Sidebar = () => {
   const [registeredStudents, setRegisteredStudents] = useState([]);
   const [ndefReader, setNdefReader] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const auth = getAuth();
   const db = getFirestore();
 
@@ -81,6 +84,27 @@ const Sidebar = () => {
       }
     }; 
   }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      const messagesRef = collection(db, "Messages");
+      const unsubscribe = onSnapshot(
+        query(
+          messagesRef,
+          where("sendTo", "==", currentUser.email),
+          where("read", "==", false)
+        ),
+        (snapshot) => {
+          setUnreadMessages(snapshot.docs.length);
+        },
+        (error) => {
+          console.error("Error listening to messages:", error);
+        }
+      );
+
+      return () => unsubscribe();
+    }
+  }, [currentUser, db]);
 
   useEffect(() => {
     const fetchRegisteredUsers = async () => {
@@ -161,6 +185,18 @@ const Sidebar = () => {
       } 
     };
 
+    const MailboxLink = () => (
+      <Link to="/dashboard/request-message" className={styles.navLink} onClick={() => setIsOpen(false)}>
+        <div className={styles.navLinkWithBadge}>
+          <Mail size={20} />
+          <span>Mailbox</span>
+          {unreadMessages > 0 && (
+            <span className={styles.messageBadge}>{unreadMessages}</span>
+          )}
+        </div>
+      </Link>
+    );
+
   // Mock data - replace with actual data
   const students = [
     "Alice Smith",
@@ -186,6 +222,8 @@ const Sidebar = () => {
 
   // Check if user is a student
   const isStudent = userData?.position === 'Student';
+  const isTeacher = userData?.position === 'Teacher';
+  const isAdmin = userData?.position === 'Admin';
 
   return (
     <>
@@ -220,8 +258,8 @@ const Sidebar = () => {
               </div> 
             </li>
 
-            {/* Archive items - shown differently for students vs non-students */}
             {isStudent ? (
+              // Student-specific navigation items
               <>
                 <li className={styles.navItem}>
                   <div className={styles.navLink} onClick={() => setIsOpen(false)}>
@@ -243,18 +281,67 @@ const Sidebar = () => {
                     <span>Membership Attendance</span>
                   </div>
                 </li>
+
+                {(isStudent || isTeacher || isAdmin) && <MailboxLink />}
+
               </>
-            ) : (
+            ) : isTeacher ? (
+              // Teacher-specific navigation items
+              <>
+                <li className={styles.navItem}>
+                  <div onClick={handleCreateEventClick} className={styles.navLink} style={{ cursor: 'pointer' }}>
+                    <Calendar size={20} />
+                    <span>Create Event</span>
+                  </div>
+                </li>
+
+                <Link to="/dashboard/event-list" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                  <ClipboardList size={20} />
+                  <span>Event List</span>
+                </Link>
+
+                <li className={styles.navItem}>
+                  <div className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Archive size={20} />
+                    <span>Archive</span>
+                  </div>
+                </li>
+
+              <li className={styles.navItem}>
+                  <Link to="/dashboard/registered-students" className={styles.navLink} onClick={() => setIsOpen(false)}>
+                    <Users size={20} />
+                    <span>Registered Students</span>
+                  </Link>
+                  <ul className={styles.dropdown}>
+                    {registeredStudents.map((student, index) => (
+                      <li key={index} className={styles.dropdownItem}>
+                        {student}
+                      </li>
+                    ))}
+                  </ul>
+              </li>
+
+              {(isStudent || isTeacher || isAdmin) && <MailboxLink />}
+
+              <li className={styles.navItem}> 
+                <div className={styles.navLink} onClick={handleFileManagerClick}> 
+                  <FolderOpen size={20} /> 
+                  <span>File Manager</span> 
+                </div> 
+              </li>
+              </>
+
+              ) : (
+              
+              <>
+
               <li className={styles.navItem}>
                 <div onClick={handleCreateEventClick} className={styles.navLink} style={{ cursor: 'pointer' }}>
                   <Calendar size={20} />
                   <span>Create Event</span>
                 </div>
               </li>
-            )}
 
-            {!isStudent && (
-              <>
                 <Link to="/dashboard/event-list" className={styles.navLink} onClick={() => setIsOpen(false)}>
                   <ClipboardList size={20} />
                   <span>Event List</span>
@@ -266,6 +353,8 @@ const Sidebar = () => {
                   <span>Archive</span>
                 </div>
                 </li>
+
+                {(isStudent || isTeacher || isAdmin) && <MailboxLink />}
 
                 <li className={styles.navItem}>
                   <Link to="/dashboard/registered-students" className={styles.navLink} onClick={() => setIsOpen(false)}>
@@ -329,15 +418,15 @@ const Sidebar = () => {
                     ))}
                   </ul>
                 </li>
+
+              <li className={styles.navItem}> 
+                <div className={styles.navLink} onClick={handleFileManagerClick}> 
+                  <FolderOpen size={20} /> 
+                  <span>File Manager</span> 
+                </div> 
+              </li>
               </>
             )}
-
-            <li className={styles.navItem}> 
-              <div className={styles.navLink} onClick={handleFileManagerClick}> 
-                <FolderOpen size={20} /> 
-                <span>File Manager</span> 
-              </div> 
-            </li>
           </ul>
         </nav>
 

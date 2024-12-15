@@ -11,6 +11,7 @@ import TeacherRegistration from './Components/Teacherregistration/Teacherregistr
 import RegisteredTeachers from './Components/RegisteredTeacher/Registeredteacher.jsx';
 import RegisteredStudents from './Components/RegisteredStudent/RegisteredStudent.jsx';
 import Process_log from './Components/Process_log/Process_log.jsx';
+import RequestForm from './Components/Requestmessage/Requestmessage.jsx';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="student-registration" element={<StudentRegistration />} />
           <Route path="nfc-reader" element={<NFCReader />} />
           <Route path="event-list" element={<EventList />} />
+          <Route path="request-message" element={<RequestForm />} />
           <Route path="file-manager" element={<FileManager />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />

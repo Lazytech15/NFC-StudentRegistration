@@ -1,6 +1,6 @@
 .sidebar {
     width: 250px;
-    height: 100vh;
+    height: auto;
     background-color: hsl(253, 87%, 6%);
     color: rgb(255, 255, 255);
     display: flex;
@@ -86,6 +86,24 @@
   
   .navLink:hover {
     background-color: #374151;
+  }
+
+  .navLinkWithBadge {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    transition: all 0.3s ease;
+    gap: 0.5em;
+  }
+  
+  .messageBadge {
+    background-color: #e53e3e;
+    color: white;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    min-width: 1.25rem;
+    text-align: center;
   }
   
   .createEventBtn {
@@ -177,16 +195,79 @@
     flex: 1;
     padding: 20px;
   }
-  
-  .welcomeContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    text-align: center;
-    padding: 2rem;
+
+  /* statistic */
+
+  .dashboardStatisticContainer{
+
   }
+
+  .statsGrid{
+
+  }
+  .statsCard{
+    margin-bottom: 10px;
+  }
+  .statsCardContent{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--c3);
+    padding: 1em 2em;
+    border-radius: 1em;
+  }
+  .statsTextContainer{
+
+  }
+
+  .statsTitle{
+    font-weight: 600;
+    font-size: var(--f-m);
+    margin: 0;
+  }
+
+  .statsValue{
+    margin: 0;
+    font-size: var(--f-l);
+    font-weight: 800;
+  }
+
+  .statsDropdown {
+    background-color: #f4f4f4;
+    border-top: 1px solid #e0e0e0;
+    padding: 10px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+  }
+  
+  .statsDropdownItem {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    padding: 5px 0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .statsDropdownItem:last-child {
+    border-bottom: none;
+  }
+  
+  .statsDropdownLabel {
+    color: #666;
+    font-size: 0.9em;
+  }
+  
+  .statsDropdownValue {
+    font-weight: bold;
+  }
+  
+  .statsIconContainer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* end here */
   
   .welcomeTitle {
     font-size: 2rem;
@@ -226,6 +307,61 @@
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 999;
   }
+
+.dashboardContainer {
+  display: flex;
+  min-height: 100vh; 
+}
+
+.mainContent {
+  flex: 1; 
+  padding: 20px;
+  background-color: #f4f7f6; 
+  overflow-y: auto;
+}
+
+/* Welcome Section Styles */
+.welcomeContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.welcomeTitle {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: var(--c1, #2c3e50);
+}
+
+.welcomeTitle span {
+  display: block;
+  font-size: 0.7em;
+  color: var(--c1, #3498db);
+}
+
+.welcomeText {
+  color: var(--c1, #7f8c8d);
+  font-size: 1.2rem;
+  max-width: 600px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .welcomeContainer {
+    padding: 1rem;
+  }
+
+  .welcomeTitle {
+    font-size: 2rem;
+  }
+
+  .welcomeText {
+    font-size: 1rem;
+  }
+}
 
   @media (max-width: 500px) {
     .sidebar {

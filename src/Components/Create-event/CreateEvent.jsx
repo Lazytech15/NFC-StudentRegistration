@@ -19,26 +19,18 @@ const CreateEvent = () => {
   const [entryLimit, setEntryLimit] = useState('unlimited');
   const [maxEntries, setMaxEntries] = useState('');
   const [locations, setLocation] = useState('');
+  const [description, setDescription] = useState('');
   const [purpose, setPurpose] = useState('event');
-  const [selectedEsp32, setSelectedEsp32] = useState('');
+  // const [selectedEsp32, setSelectedEsp32] = useState('');
   const [status, setStatus] = useState('pending');
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [isReading, setIsReading] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
-  const [statusDetails, setStatusDetails] = useState([]);
   const [eventImage, setEventImage] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
 
-  const updateStatus = (command, details) => {
-    setStatusMessage(command);
-    setStatusDetails(details);
-    // For very quick operations, add a minimum display time
-    return new Promise(resolve => setTimeout(resolve, 800));
-  };
 
   // Mock data for ESP32 devices
   const esp32Devices = ['ESP32-001', 'ESP32-002', 'ESP32-003'];
@@ -58,10 +50,6 @@ const CreateEvent = () => {
     const storageRef = ref(storage, `users/${userEmail}/event_images/${timestamp}_${eventImage.name}`);
 
     try {
-      await updateStatus(
-        'Uploading image',
-        ['Please wait while the image is being uploaded']
-      );
       
       const snapshot = await uploadBytes(storageRef, eventImage);
       const url = await getDownloadURL(snapshot.ref);
@@ -76,30 +64,24 @@ const CreateEvent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setIsReading(true);
 
     try {
       // Upload image first if exists
       const uploadedImageUrl = await uploadImage();
-      
-      await updateStatus(
-        `Getting all of data gathered`,
-        ['Creating event without ID']
-      );
       
       const eventData = {
         eventName,
         entryLimit,
         maxEntries: entryLimit === 'limited' ? parseInt(maxEntries) : null,
         locations,
+        description,
         purpose,
-        selectedEsp32,
         status,
         startDate,
         startTime,
         endDate,
         endTime,
-        imageUrl: uploadedImageUrl, // Add the image URL to eventData
+        imageUrl: uploadedImageUrl,
         creatorNfcId: userData?.currentnfcId || null,
         createdAt: new Date().toISOString(),
         createdBy: userData?.email || null,
@@ -107,20 +89,6 @@ const CreateEvent = () => {
       };
 
       const docRef = await addDoc(collection(db, "PendingEvent"), eventData);
-      await updateStatus(
-        `Event created with ID: ${docRef.id}`,
-        ['Processing for data upload']
-      );
-      await updateDoc(docRef, { docId: docRef.id });
-      await updateStatus(
-        `Event created`,
-        ['Check your Event List']
-      );
-      setTimeout(() => {
-        setStatusMessage('');
-        setStatusDetails([]);
-      }, 1000);
-      
       resetForm();
     } catch (error) {
       console.error("Error creating event: ", error);
@@ -135,7 +103,8 @@ const CreateEvent = () => {
     setMaxEntries('');
     setLocation('');
     setPurpose('event');
-    setSelectedEsp32('');
+    // setSelectedEsp32('');
+    setDescription('');
     setStatus('pending');
     setStartDate('');
     setStartTime('');
@@ -144,22 +113,10 @@ const CreateEvent = () => {
     setEventImage(null);
     setImageUrl('');
     setLoading(false);
-    setIsReading(false);
   };
 
   return (
     <div className={styles.container}>
-
-    {/* Status Display */}
-    {(statusMessage || loading) && (
-      <div className={`${styles.status} ${isReading ? styles.reading : ''}`}>
-        <div className={styles.status_command}>{statusMessage}</div>
-        {statusDetails.map((detail, index) => (
-          <div key={index} className={styles.status_detail}>{detail}</div>
-        ))}
-      </div>
-    )}
-
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>Create New Event</h2>
@@ -198,8 +155,8 @@ const CreateEvent = () => {
                 name="Entry Limit"
                 onChange={(e) => setEntryLimit(e.target.value)}
               >
-                <option value="unlimited">Unlimited</option>
-                <option value="limited">Limited</option>
+                <option value="unlimited">Anyone can join</option>
+                <option value="limited">Limited Person</option>
               </select>
             </div>
 
@@ -237,11 +194,11 @@ const CreateEvent = () => {
               >
                 <option value="event" name="Purpose">Event Attendance</option>
                 <option value="membership" name="Purpose">Membership Attendance</option>
-                <option value="room" name="Purpose">Room Attendance</option>
+                {/* <option value="room" name="Purpose">Room Attendance</option> */}
               </select>
             </div>
 
-            <div className={styles.formGroup}>
+            {/* <div className={styles.formGroup}>
               <label className={styles.label}>ESP32 Device</label>
               <select 
                 className={styles.select}
@@ -255,6 +212,17 @@ const CreateEvent = () => {
                   </option>
                 ))}
               </select>
+            </div> */}
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Description</label>
+              <input
+                type="text"
+                className={styles.input}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter Description"
+              />
             </div>
 
             <div className={styles.formGroup}>
@@ -267,9 +235,9 @@ const CreateEvent = () => {
               >
                 <option value="pending" name="Status">Pending</option>
                 <option value="ongoing" name="Status">Ongoing</option>
-                <option value="completed" name="Status">Completed</option>
-                <option value="pause" name="Status">Pause</option>
-                <option value="continued" name="Status">Continued</option>
+                {/* <option value="completed" name="Status">Completed</option> */}
+                {/* <option value="pause" name="Status">Pause</option> */}
+                {/* <option value="continued" name="Status">Continued</option> */}
               </select>
             </div>
 
@@ -316,6 +284,7 @@ const CreateEvent = () => {
                 onChange={(e) => setEndTime(e.target.value)}
               />
             </div>
+
           </div>
           
           <button type="submit" className={Buttons.buttons} disabled={loading} name="Create Event Submit">
