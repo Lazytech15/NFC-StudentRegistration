@@ -288,9 +288,8 @@ const Sidebar = () => {
   // If no user data is available after loading, show appropriate message
   if (!userData && !isLoading) {
     return (
-      <div className={styles.errorContainer}>
-        <p>Please log in to access the dashboard</p>
-        <button onClick={() => navigate('/login')}>Go to Login</button>
+      <div className={styles.loadingContainer}>
+        <Loading text="Loading dashboard..." size="large" />
       </div>
     );
   }
