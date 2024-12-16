@@ -12,6 +12,7 @@ import RegisteredTeachers from './Components/RegisteredTeacher/Registeredteacher
 import RegisteredStudents from './Components/RegisteredStudent/RegisteredStudent.jsx';
 import Process_log from './Components/Process_log/Process_log.jsx';
 import RequestForm from './Components/Requestmessage/Requestmessage.jsx';
+import NFCScanner from './Components/Dashboard/Nfcscanner/Nfcscanner.jsx';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
           <Route path="nfc-reader" element={<NFCReader />} />
           <Route path="event-list" element={<EventList />} />
           <Route path="request-message" element={<RequestForm />} />
+          <Route path="nfc-scanner" element={<NFCScanner />} />
           <Route path="file-manager" element={<FileManager />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />

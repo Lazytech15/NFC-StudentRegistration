@@ -98,42 +98,42 @@ const Sidebar = () => {
     loadInitialData();
   }, []);
 
-  // useEffect(() => { 
-  //   const unsubscribe = auth.onAuthStateChanged(async (user) => { 
-  //     setCurrentUser(user); 
-  //     if (user) { 
-  //       const email = user.email; 
-  //       const userData = await fetchUserData(email); 
-  //       setUserData(userData);
-  //       navigate('/dashboard', { state: { userData } });
-  //     } 
-  //   }); 
+  useEffect(() => { 
+    const unsubscribe = auth.onAuthStateChanged(async (user) => { 
+      setCurrentUser(user); 
+      if (user) { 
+        const email = user.email; 
+        const userData = await fetchUserData(email); 
+        setUserData(userData);
+        navigate('/dashboard', { state: { userData } });
+      } 
+    }); 
 
-  //   // Check and cleanup any existing NDEFReader
-  //   const checkAndCleanupNFC = async () => {
-  //     try {
-  //       if ('NDEFReader' in window) {
-  //         const existingReader = await window.NDEFReader;
-  //         if (existingReader) {
-  //           existingReader.abort();
-  //           console.log('Existing NFC reader cleaned up');
-  //         }
-  //       }
-  //     } catch (error) {
-  //       console.error('Error cleaning up NFC reader:', error);
-  //     }
-  //   };
+    // Check and cleanup any existing NDEFReader
+    const checkAndCleanupNFC = async () => {
+      try {
+        if ('NDEFReader' in window) {
+          const existingReader = await window.NDEFReader;
+          if (existingReader) {
+            existingReader.abort();
+            console.log('Existing NFC reader cleaned up');
+          }
+        }
+      } catch (error) {
+        console.error('Error cleaning up NFC reader:', error);
+      }
+    };
 
-  //   checkAndCleanupNFC();
+    checkAndCleanupNFC();
     
-  //   return () => {
-  //     unsubscribe();
-  //     // Cleanup NFC reader on component unmount
-  //     if (ndefReader) {
-  //       ndefReader.abort();
-  //     }
-  //   }; 
-  // }, []);
+    return () => {
+      unsubscribe();
+      // Cleanup NFC reader on component unmount
+      if (ndefReader) {
+        ndefReader.abort();
+      }
+    }; 
+  }, []);
 
   useEffect(() => {
     if (currentUser) {
@@ -156,25 +156,25 @@ const Sidebar = () => {
     }
   }, [currentUser, db]);
 
-  // useEffect(() => {
-  //   const fetchRegisteredUsers = async () => {
-  //     try {
-  //       // Fetch teachers
-  //       const teachersSnapshot = await getDocs(collection(db, "RegisteredTeacher"));
-  //       const teachersList = teachersSnapshot.docs.map(doc => doc.data().name).slice(0, 5);
-  //       setRegisteredTeachers(teachersList);
+  useEffect(() => {
+    const fetchRegisteredUsers = async () => {
+      try {
+        // Fetch teachers
+        const teachersSnapshot = await getDocs(collection(db, "RegisteredTeacher"));
+        const teachersList = teachersSnapshot.docs.map(doc => doc.data().name).slice(0, 5);
+        setRegisteredTeachers(teachersList);
 
-  //       // Fetch students
-  //       const studentsSnapshot = await getDocs(collection(db, "RegisteredStudent"));
-  //       const studentsList = studentsSnapshot.docs.map(doc => doc.data().name).slice(0, 5);
-  //       setRegisteredStudents(studentsList);
-  //     } catch (error) {
-  //       console.error("Error fetching registered users:", error);
-  //     }
-  //   };
+        // Fetch students
+        const studentsSnapshot = await getDocs(collection(db, "RegisteredStudent"));
+        const studentsList = studentsSnapshot.docs.map(doc => doc.data().name).slice(0, 5);
+        setRegisteredStudents(studentsList);
+      } catch (error) {
+        console.error("Error fetching registered users:", error);
+      }
+    };
 
-  //   fetchRegisteredUsers();
-  // }, [db]);
+    fetchRegisteredUsers();
+  }, [db]);
 
   
   
@@ -248,23 +248,6 @@ const Sidebar = () => {
         </div>
       </Link>
     );
-
-  // Mock data - replace with actual data
-  const students = [
-    "Alice Smith",
-    "Bob Johnson",
-    "Carol Williams",
-    "David Brown",
-    "Eve Davis"
-  ];
-
-  const teachers = [
-    "Smith",
-    "Johnson",
-    "Williams",
-    "Brown",
-    "Davis"
-  ];
 
   const scanners = [
     "Scanner-001",
@@ -475,17 +458,10 @@ const Sidebar = () => {
                 </li>
 
                 <li className={styles.navItem}>
-                  <div className={styles.navLink} onClick={() => setIsOpen(false)}>
+                  <Link to="/dashboard/nfc-scanner" className={styles.navLink} onClick={() => setIsOpen(false)}>
                     <Cpu size={20} />
-                    <span>ESP32 NFC Scanners</span>
-                  </div>
-                  <ul className={styles.dropdown}>
-                    {scanners.map((scanner, index) => (
-                      <li key={index} className={styles.dropdownItem}>
-                        {scanner}
-                      </li>
-                    ))}
-                  </ul>
+                    <span>NFC Scanner</span>
+                  </Link>
                 </li>
 
               <li className={styles.navItem}> 
