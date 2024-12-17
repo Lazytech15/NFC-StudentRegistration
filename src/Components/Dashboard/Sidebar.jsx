@@ -50,63 +50,17 @@ const Sidebar = () => {
   const auth = getAuth();
   const db = getFirestore();
 
-  useEffect(() => {
-    const loadInitialData = async () => {
-      setIsLoading(true);
-      try {
-        const unsubscribe = auth.onAuthStateChanged(async (user) => {
-          setCurrentUser(user);
-          if (user) {
-            const email = user.email;
-            const userData = await fetchUserData(email);
-            setUserData(userData);
-            
-            // Fetch registered users
-            const [teachersSnapshot, studentsSnapshot] = await Promise.all([
-              getDocs(collection(db, "RegisteredTeacher")),
-              getDocs(collection(db, "RegisteredStudent"))
-            ]);
-            
-            setRegisteredTeachers(teachersSnapshot.docs.map(doc => doc.data().name).slice(0, 5));
-            setRegisteredStudents(studentsSnapshot.docs.map(doc => doc.data().name).slice(0, 5));
-            
-            navigate('/dashboard', { state: { userData } });
-          }
-          setIsLoading(false);
-        });
-
-        // Cleanup NFC
-        if ('NDEFReader' in window) {
-          const existingReader = await window.NDEFReader;
-          if (existingReader) {
-            existingReader.abort();
-          }
-        }
-
-        return () => {
-          unsubscribe();
-          if (ndefReader) {
-            ndefReader.abort();
-          }
-        };
-      } catch (error) {
-        console.error("Error loading initial data:", error);
-        setIsLoading(false);
-      }
-    };
-
-    loadInitialData();
-  }, []);
-
   useEffect(() => { 
     const unsubscribe = auth.onAuthStateChanged(async (user) => { 
-      setCurrentUser(user); 
+      setCurrentUser(user);
+      setIsLoading(true);  
       if (user) { 
         const email = user.email; 
         const userData = await fetchUserData(email); 
         setUserData(userData);
         navigate('/dashboard', { state: { userData } });
-      } 
+      }
+      setIsLoading(false); 
     }); 
 
     // Check and cleanup any existing NDEFReader

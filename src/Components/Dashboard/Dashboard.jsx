@@ -24,7 +24,7 @@ function Dashboard() {
                 Select an option from the sidebar to get started
               </p>
             </div>
-            {userData?.position !== "Student" && userData?.position !== "Teacher" && (
+            {userData && userData.position !== "Student" && userData.position !== "Teacher" && (
               <StatisticsChart />
             )}
           </>
